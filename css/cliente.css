@@ -1,0 +1,863 @@
+/* =============== TEMA =============== */
+:root{
+  /* Paleta mais viva */
+  --brand:   #2f7b47;   /* verde principal (ações/botões, destaques) */
+  --neutral: #9aa797;   /* cinza para bordas/divisórias */
+  --ink:     #1f2933;   /* preto dos textos */
+
+  /* Superfícies */
+  --bg:      #eef4ef;   /* fundo geral */
+  --card:    #ffffff;
+
+  /* Derivados da brand */
+  --brand-05: rgba(47,123,71,.05);
+  --brand-10: rgba(47,123,71,.10);
+  --brand-15: rgba(47,123,71,.15);
+  --brand-20: rgba(47,123,71,.20);
+  --brand-30: rgba(47,123,71,.30);
+  --brand-dark: #215535;
+
+  /* Accents para cards (cores diferentes) */
+  --accent-blue:   #1565c0;
+  --accent-blue-soft:  #dbeafe;
+
+  --accent-yellow: #f59e0b;
+  --accent-yellow-soft: #fef3c7;
+
+  --accent-green:  var(--brand);
+  --accent-green-soft: #d9f3df;
+
+  /* Neutros */
+  --line: #e3e7e2;
+  --shadow: rgba(0,0,0,.10);
+}
+
+/* RESET / BODY */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ==== Fundo borrado suave do site todo (foto de fundo) ==== */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("../imagens/foto_de_fundo_login.jpg") no-repeat center center fixed;
+  background-size: cover;
+  filter: blur(7px);
+  opacity: 0.65;
+  z-index: -1;
+}
+
+/* HEADER (cabeçalho baixo + texto ClinAgenda) */
+.header {
+  background: var(--card);
+  padding: 10px 28px;          /* menor altura */
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  box-shadow: 0 2px 5px var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--brand-10);
+  min-height: 56px;            /* altura controlada */
+}
+
+/* bloco do logo/texto no header */
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  font-size: 20px;
+}
+
+/* quadradinho com ícone (pode ser um +) */
+.header-logo-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--brand-10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--brand-dark);
+}
+
+/* texto ClinAgenda */
+.header-logo-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.header-logo-text .plus {
+  font-weight: 800;
+}
+.header-logo-text .name {
+  font-weight: 700;
+}
+
+/* SIDEBAR ------------------------------------------------------------------------------------------ */
+
+.sidebar {
+  width: 58px;
+  transition: width 0.3s ease;
+  overflow-x: hidden;
+  background: var(--card);
+  height: 100vh;
+  position: fixed;
+  top: 56px;            /* bate certinho com a altura do header */
+  left: 0;
+  border-right: 7px solid var(--brand);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 20px;
+}
+
+/* Expande ao passar o mouse */
+.sidebar:hover { width: 220px; }
+
+/* BLOCO DO PERFIL */
+.sidebar-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  padding: 20px 0 14px;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+.sidebar-profile img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--brand);
+  transition: width 0.3s, height 0.3s;
+}
+.sidebar:hover .sidebar-profile img { width: 74px; height: 74px; }
+
+.sidebar-info {
+  margin-top: 8px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  max-height: 0;
+  overflow: hidden;
+  line-height: 1.2;
+}
+.sidebar:hover .sidebar-info { opacity: 1; max-height: 100px; }
+
+.sidebar-info strong { color: var(--ink); font-size: 14px; }
+.sidebar-info small  { color: #777; font-size: 11px; }
+
+/* MENU DE NAVEGAÇÃO */
+.sidebar nav { flex-grow: 1; }
+
+.sidebar nav ul {
+  list-style: none;
+  padding: 8px 0 0 0;
+  margin: 0;
+}
+
+.sidebar nav ul li {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  transition: 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sidebar nav ul li i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+}
+
+/* === esconder Configurações === */
+.sidebar nav ul li.menu-config {
+  display: none !important;   /* colocado via class="menu-config" */
+}
+
+.sidebar nav ul .active {
+  background-color: var(--brand-10);
+  color: var(--brand);
+  font-weight: bold;
+}
+
+.sidebar nav ul li:hover {
+  background-color: var(--brand-05);
+  color: var(--brand);
+}
+
+.menu-text {
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.sidebar:hover .menu-text { opacity: 1; }
+
+/* BOTÃO SAIR FIXO (mais alto) */
+.sidebar .logout {
+  padding: 22px 22px;
+  background: var(--card);
+  color: #e51616;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 80px;       /* sobe mais do fundo */
+  border-radius: 18px;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 2px 20px var(--brand-10);
+  position: relative;
+}
+.sidebar .logout::before {
+  content: "";
+  position: absolute;
+  top: -10px; left: 10px; right: 10px;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #c7c3c3, transparent);
+  border-radius: 2px;
+}
+.sidebar .logout:hover {
+  background-color: #ffe2e2;
+  color: #b62929;
+}
+
+/* CONTEÚDO PRINCIPAL ----------------------------------------------------------------------------------- */
+.main-content {
+  margin-left: 58px;
+  padding: 30px;
+  transition: margin-left 0.3s ease;
+}
+.sidebar:hover ~ .main-content { margin-left: 220px; }
+
+/* ===================== BANNER ===================== */
+.banner {
+  --banner-start: #31a368;
+  --banner-end:   #217746;
+  --banner-fg:    #ffffff;
+
+  background: linear-gradient(to left, var(--banner-start), var(--banner-end));
+  color: var(--banner-fg);
+
+  padding: 50px 30px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 26px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+
+.banner-content h1 {
+  margin: 0;
+  font-size: 26px;
+}
+.banner-content p {
+  margin: 8px 0 15px;
+}
+
+/* Ícone decorativo no banner */
+.banner-icon i { font-size: 230px; opacity: 0.18; }
+
+/* CARDS SUPERIORES */
+.cards {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.card {
+  flex: 1;
+  background: var(--card);
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 6px 16px var(--shadow);
+  border: 1px solid var(--brand-10);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+.card-number {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+/* Ícones circulares */
+.icon-circle {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.icon-circle.green {
+  background-color: var(--accent-green-soft);
+  color: var(--accent-green);
+}
+.icon-circle.blue {
+  background-color: var(--accent-blue-soft);
+  color: var(--accent-blue);
+}
+.icon-circle.yellow {
+  background-color: var(--accent-yellow-soft);
+  color: var(--accent-yellow);
+}
+.text-green { color: var(--accent-green); font-size: 14px; }
+.text-blue  { color: var(--accent-blue); font-size: 14px; }
+.text-yellow{ color: var(--accent-yellow); font-size: 14px; }
+
+/* --- Seção: Marcar Novo Horário -------------------------------------------------------- */
+.agendamento {
+  background: #f1f8f3;
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 6px 18px var(--shadow);
+  margin-top: 20px;
+  border: 1px solid var(--brand-10);
+}
+
+.agendamento-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.agendamento-header h2 {
+  font-size: 20px; font-weight: bold; color: var(--ink);
+}
+
+/* --- Tabela de Resultados --- */
+.tabela {
+  width: 100%; border-collapse: collapse; background: var(--card);
+  border-radius: 12px; overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  border: 1px solid var(--brand-10);
+}
+.tabela thead { background-color: #e0f0e5; }
+.tabela th {
+  text-transform: uppercase; font-weight: 600; font-size: 13px; letter-spacing: .8px;
+  padding: 12px; text-align: center; color: #2f3e37;
+}
+.tabela td {
+  padding: 16px 12px; border-bottom: 1px solid var(--line);
+  text-align: center; font-size: 14px; background:#ffffff;
+}
+.tabela tr:nth-child(even) td { background:#f7faf8; }
+.tabela td:first-child { text-align: left; }
+
+/* Card do médico (foto em div branca) */
+.medico-card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:#ffffff;
+  padding:8px 10px;
+  border-radius:12px;
+  box-shadow:0 3px 8px rgba(0,0,0,.06);
+}
+.medico-foto-box{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  overflow:hidden;
+  flex-shrink:0;
+  border:2px solid var(--brand);
+}
+.medico-foto-box img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.medico-card-info strong{
+  display:block;
+  font-size:14px;
+  color:var(--ink);
+}
+.medico-card-info small{
+  font-size:12px;
+  color:#6b7280;
+}
+
+/* ===== Barra de busca médica ===== */
+.search-wrap{ 
+  display:flex; 
+  gap:8px; 
+  align-items:center; 
+  margin:12px 0 18px; 
+}
+.search-wrap .input{ 
+  flex:1; 
+  display:flex; 
+  align-items:center; 
+  gap:8px; 
+  background:#e7f7ec; 
+  border:1px solid #7ec493; 
+  border-radius:12px; 
+  padding:9px 14px; 
+}
+.search-wrap input[type="text"]{ 
+  width:100%; 
+  border:none; 
+  background:transparent; 
+  outline:none; 
+  font-size:14px; 
+}
+.search-wrap button{ 
+  padding:9px 14px; 
+  border-radius:12px; 
+  border:1px solid #7ec493; 
+  background:#ffffff; 
+  cursor:pointer; 
+  transition:.2s; 
+  font-weight:600; 
+  color:#256246; 
+}
+.search-wrap button:hover{ 
+  background:#d7f2e0; 
+}
+
+.btn-agendar, 
+.btn-ativar-cal{ 
+  display:inline-block; 
+  padding:8px 14px; 
+  border-radius:10px; 
+  border:1px solid #7ec493; 
+  background:#e9fbf0; 
+  text-decoration:none; 
+  color:#1f5138; 
+  transition:.2s; 
+  cursor:pointer; 
+  font-weight:600; 
+}
+.btn-agendar:hover, 
+.btn-ativar-cal:hover{ 
+  background:#cbf3d8; 
+  transform:translateY(-1px); 
+}
+.btn-ativar-cal.sel{ 
+  outline:2px solid #45c17a; 
+  background:#e7fff0; 
+}
+
+/* Mensagem sem resultados */
+.sem-resultados{ 
+  padding:12px; 
+  background:#fff3cd; 
+  border:1px solid #ffeeba; 
+  border-radius:10px; 
+  margin-top:10px; 
+}
+
+/* --- Seção: Cards de Informação (Consultas / Exames) ----------- */
+.cards-lista.grid-2{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 20px;
+}
+@media (max-width: 992px){
+  .cards-lista.grid-2{ grid-template-columns: 1fr; }
+}
+
+.card-lista{
+  background:#fff;
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  border: 1px solid rgba(0,0,0,.04);
+}
+.card-lista-header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 12px;
+}
+.card-lista-header h3{
+  margin:0; font-size: 22px; font-weight: 700; color:#2d2f31;
+}
+.card-lista-header .ver-todos{
+  color:#22a45a; text-decoration:none; font-weight:600;
+}
+.card-lista-header .ver-todos:hover{ text-decoration:underline; }
+
+/* AGORA COMO CARDS (não listão) nas listas de resumo da home */
+.lista-itens{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap:16px;
+}
+
+/* item vazio ocupa a linha toda */
+.item-vazio{
+  padding:14px;
+  border:1px dashed #d7e0d8;
+  border-radius:12px;
+  color:#647066;
+  background:#f8fbf8;
+  grid-column: 1 / -1;
+}
+
+/* cada item vira um card individual */
+.item-lista{
+  display:flex;
+  align-items:flex-start;
+  gap:16px;
+  background:#f9fafb;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:14px 16px;
+  box-shadow:0 6px 18px rgba(0,0,0,.05);
+}
+
+/* ícone do card */
+.icone-item{
+  width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
+  font-size:18px;
+}
+.icone-item.verde{ background:#eaf7ef; color:#1e8b4d; }
+.icone-item.azul{  background:#eaf0ff; color:#3b6ae0; }
+
+.info-item{ flex:1; min-width:0; }
+.info-item strong{ font-weight:700; color:#28313b; display:block; }
+.info-item p{ margin:2px 0; color:#5b6570; font-size:14px; }
+.info-item .sub{ color:#6b7680; font-size: 13px; }
+.info-item i{ margin-right:6px; opacity:.85; }
+
+.right-col{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:6px;
+}
+.time-range{
+  color:#3a4a5a; font-weight:600; background:#f2f6fa; border:1px solid #e2e8ef;
+  padding:6px 10px; border-radius:10px;
+}
+
+/* Badges de status em listas e cards */
+.badge{
+  font-size:13px; font-weight:700; padding:6px 10px; border-radius:10px; border:1px solid transparent;
+}
+.badge.pendente{ background:#fff7cf; border-color:#ffe79a; color:#8d6e00; }
+.badge.agendado{ background:#e8f0ff; border-color:#c9dafc; color:#2f5ac3; }
+.badge.atrasado{ background:#ffe4e1; border-color:#ffc6c1; color:#a6251d; }
+.badge.neutro{ background:#eef1f4; border-color:#dfe5ea; color:#556270; }
+
+/* ============================================================
+   ========== CALENDÁRIO E HORÁRIOS (CLIENTE) =====
+   ============================================================ */
+
+.agendamento-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 18px;
+  margin-top: 16px;
+}
+@media (max-width: 1000px) {
+  .agendamento-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cal-card, .slots-card {
+  background: var(--card);
+  border: 1px solid var(--brand-10);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+/* Calendário */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.calendar-header .arrow {
+  border: 1px solid var(--brand-20);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.calendar-header .arrow:hover {
+  background: var(--brand-05);
+}
+#mes-ano {
+  font-weight: 700;
+  text-transform: capitalize;
+  color: var(--ink);
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #4b5563;
+  text-align: center;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.calendar-grid div {
+  background: #fff;
+  border: 1px solid var(--brand-10);
+  border-radius: 10px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.calendar-grid div:hover {
+  background: var(--brand-05);
+}
+.dia-desativado {
+  background: #f3f4f6 !important;
+  color: #9ca3af;
+  cursor: not-allowed !important;
+}
+.dia-borda {
+  outline: 2px solid var(--brand);
+  background: #f2fbf5;
+}
+
+/* Horários */
+.slots-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.slots-head .medico-selecionado {
+  font-weight: 700;
+  color: #263238;
+}
+#data-head {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.slots-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 44px;
+}
+.slot-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--brand-20);
+  background: #fff;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.slot-btn:hover {
+  background: var(--brand-05);
+}
+.slot-btn.sel {
+  outline: 2px solid #45c17a;
+  background: #e7fff0;
+}
+
+/* Botão Confirmar */
+.btn-confirmar {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 4px 10px var(--brand-15);
+  transition: 0.3s;
+}
+.btn-confirmar:hover {
+  background: var(--brand-dark);
+}
+.btn-confirmar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ====== SEÇÕES (SPA) ====== */
+.secao{ display:none; }
+.secao.ativa{ display:block; }
+
+.subtitulo-sec{ 
+  font-size:16px; 
+  margin:16px 0 8px; 
+  font-weight:600; 
+  color:#1f2933; 
+}
+
+/* ====== CARDS EM GRID 4x3 PARA CONSULTAS E EXAMES ====== */
+.lista-consultas,
+.lista-exames{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:16px;
+  margin-top:8px;
+}
+@media (max-width: 1200px){
+  .lista-consultas,
+  .lista-exames{
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px){
+  .lista-consultas,
+  .lista-exames{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px){
+  .lista-consultas,
+  .lista-exames{
+    grid-template-columns: 1fr;
+  }
+}
+
+.card-exame,
+.card-consulta{
+  background:#fff;
+  border-radius:12px;
+  padding:10px 12px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  box-shadow:0 4px 12px rgba(15,118,110,.06);
+  min-height: 90px;
+}
+.card-exame .icon,
+.card-consulta .icon{
+  width:40px; height:40px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+}
+.card-exame .icon{
+  background:#e0f2fe; color:#1d4ed8;
+}
+.card-consulta .icon{
+  background:#dcfce7; color:#166534;
+}
+.card-consulta .info,
+.card-exame .info{ flex:1; }
+.card-consulta .info strong,
+.card-exame .info strong{ display:block; margin-bottom:2px; }
+.card-consulta .info .sub,
+.card-exame .info .sub{ font-size:12px; color:#6b7280; display:block; margin-top:2px; }
+
+/* Tabela de médicos na seção Médicos */
+.tabela-medicos{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:12px;
+  background:#fff;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 4px 12px var(--shadow);
+}
+.tabela-medicos th,
+.tabela-medicos td{
+  padding:10px 12px;
+  font-size:14px;
+  border-bottom:1px solid #e5e7eb;
+  text-align:left;
+}
+.tabela-medicos thead{
+  background:#f3f4f6;
+  color:#374151;
+  font-weight:600;
+}
+
+/* ====== CARTÃO CONFIGURAÇÕES ====== */
+.config-card{
+  background:#fff;
+  border-radius:14px;
+  padding:16px 18px;
+  box-shadow:0 8px 24px rgba(15,118,110,.06);
+  max-width:520px;
+}
+.config-row{ 
+  display:grid; 
+  grid-template-columns:1fr 1fr; 
+  gap:12px; 
+  margin-top:10px; 
+}
+.config-card label{ 
+  font-size:13px; 
+  font-weight:600; 
+  color:#374151; 
+}
+.config-card input{
+  width:100%; padding:8px 10px;
+  border-radius:8px; border:1px solid #d1d5db;
+  background:#f9fafb; outline:none; font-size:14px;
+}
+.config-card input:focus{ 
+  border-color:#3CB371; 
+  box-shadow:0 0 0 1px rgba(60,179,113,.25); 
+  background:#fff; 
+}
+.btn-salvar-config{
+  margin-top:14px;
+  padding:9px 14px;
+  border-radius:999px;
+  border:none;
+  background:#3CB371;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 8px 18px rgba(60,179,113,.35);
+}
+.btn-salvar-config:hover{ 
+  background:#2E8B57; 
+}
+
+.msg-ok{
+  margin-top:8px;
+  padding:8px 10px;
+  background:#ecfdf3;
+  border:1px solid #bbf7d0;
+  color:#166534;
+  border-radius:8px;
+  font-size:13px;
+}
+.msg-erro{
+  margin-top:8px;
+  padding:8px 10px;
+  background:#fef2f2;
+  border:1px solid #fecaca;
+  color:#b91c1c;
+  border-radius:8px;
+  font-size:13px;
+}

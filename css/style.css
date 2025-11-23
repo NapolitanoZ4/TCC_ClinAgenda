@@ -1,0 +1,138 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #edf1f7;
+    color: #333;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Topbar */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background-color: #1d3b42;
+    box-shadow: 0 2px 6px rgba(225, 221, 221, 0.05);
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1d3b42;
+}
+
+.logos img {
+    height: 250px; /* ajuste conforme o tamanho da sua imagem */
+}
+/* Main area */
+
+.main {
+    display: flex;
+    flex: 1;
+}
+
+.sidebar {
+    background-color: #f9fcfc;
+    width: 250px;
+    padding: 20px;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar ul {
+    list-style: none;
+}
+
+.sidebar li {
+    font-size: 16px;
+    padding: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.content {
+    flex: 1;
+    padding: 40px;
+}
+
+.banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.banner h1 {
+    font-size: 32px;
+    color: #062d4f;
+    margin-bottom: 10px;
+}
+
+.banner p {
+    font-size: 16px;
+    color: #444;
+    margin-bottom: 20px;
+}
+
+.banner button {
+    background-color: #2c7c6b;
+    color: #fff;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.banner img {
+    width: 220px;
+    border-radius: 10px;
+}
+
+.search-bar input {
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+
+/* Services */
+.services {
+    display: flex;
+    gap: 20px;
+}
+
+.card {
+    background-color: #ffffff;
+    flex: 1;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.card p {
+    font-size: 18px;
+    font-weight: bold;
+    color: #214e54;
+    margin-bottom: 10px;
+}
+
+.card span {
+    font-size: 14px;
+    color: #555;
+}

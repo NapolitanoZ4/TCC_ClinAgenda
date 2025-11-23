@@ -1,0 +1,262 @@
+/* ===========================
+   CLINAGENDA – PERFIL DO CLIENTE
+   Tema claro + detalhes verdes
+=========================== */
+
+:root {
+  --green: #2f7b47;
+  --green-dark: #215535;
+  --green-soft: #e7f4ec;
+
+  --bg: #eef4ef;
+  --card-bg: #ffffff;
+
+  --text: #1f2933;
+  --muted: #6b7280;
+
+  --border: #d9e4d6;
+  --shadow: rgba(0,0,0,.08);
+
+  --radius: 14px;
+  --radius-big: 20px;
+}
+
+/* ============================== RESET ============================== */
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: Arial, sans-serif;
+  color: var(--text);
+}
+
+/* ============================== HEADER ============================== */
+
+header {
+  background: var(--card-bg);
+  padding: 16px 32px !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 6px var(--shadow);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(47,123,71,.35);
+}
+
+.brand-title {
+  font-size: 19px;
+  font-weight: bold;
+  color: var(--green-dark);
+}
+
+.brand-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.logout-link {
+  padding: 9px 16px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  border-radius: var(--radius);
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--green);
+  transition: 0.2s;
+}
+
+.logout-link:hover {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ============================== PAINEL ============================== */
+
+.painel-central {
+  max-width: 1280px;
+  margin: 40px auto;
+  padding: 22px;
+}
+
+/* Grid com mais espaço entre cards */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 32px;                           /* AQUI aumentei o espaço entre as pontas */
+  padding-bottom: 30px;                /* Espaço extra para não encostar */
+}
+
+/* ============================== CARD ============================== */
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius-big);
+  padding: 26px 26px;                  /* Padding maior */
+  box-shadow: 0 8px 20px var(--shadow);
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+/* (Correção) distância extra entre header e form */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;                 /* Mais espaçamento */
+}
+
+.card-header i {
+  background: var(--green-soft);
+  color: var(--green-dark);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+}
+
+.card-header span {
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: var(--green-dark);
+}
+
+/* ============================== FOTO ============================== */
+
+.profile-pic-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+#foto-perfil-cliente {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--green);
+  background: #fff;
+  cursor: pointer;
+  transition: .25s;
+}
+
+#foto-perfil-cliente:hover {
+  transform: scale(1.07);
+  box-shadow: 0 8px 20px rgba(0,0,0,.18);
+}
+
+/* ============================== TEXTOS ============================== */
+
+.cliente-nome {
+  text-align: center;
+  margin: 6px 0 4px;
+  font-size: 21px;
+  font-weight: bold;
+}
+
+.cpf {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+/* ============================== FORM ============================== */
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 18px;                      /* Mais espaço entre campos */
+}
+
+.mini-full {
+  grid-column: span 2;
+}
+
+.form-group label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.form-group input,
+.form-group select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  font-size: 15px;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.03);
+  transition: .2s;
+}
+
+textarea {
+  min-height: 130px;
+  resize: vertical;
+  border-radius: 16px;
+}
+
+textarea:focus,
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(47,123,71,.22);
+}
+
+/* ============================== BOTÃO ============================== */
+
+.btn-salvar {
+  margin-top: 20px;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  padding: 13px 22px;
+  border-radius: var(--radius-big);
+  font-weight: bold;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.btn-salvar:hover {
+  background: var(--green-dark);
+}
+
+/* ============================== RESPONSIVO ============================== */
+
+@media (max-width: 520px) {
+  .mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #foto-perfil-cliente {
+    width: 90px;
+    height: 90px;
+  }
+
+  .cards-grid {
+    gap: 20px;
+  }
+}

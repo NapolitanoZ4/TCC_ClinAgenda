@@ -1,0 +1,327 @@
+:root{
+  --bg:        #f2f5f8;
+  --card:      #ffffff;
+  --line:      #d7dde3;
+  --ink:       #1f2933;
+  --muted:     #6c7480;
+  --primary:   #2563eb;   /* azul */
+  --primary-soft:#dbeafe;
+  --green:     #16a34a;
+  --green-soft:#dcfce7;
+  --red:       #e11d48;
+  --shadow:    rgba(15,23,42,0.08);
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* TOPO -------------------------------------------------------------------- */
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:20;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 26px;
+  background:var(--card);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 2px 6px var(--shadow);
+}
+
+.topbar-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.logo{
+  height:42px;
+}
+.topbar-left h1{
+  margin:0;
+  font-size:20px;
+}
+.topbar-left span{
+  font-size:12px;
+  color:var(--muted);
+}
+
+.topbar-right{
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+.adm-info{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+}
+.adm-nome{
+  font-weight:600;
+}
+.adm-email{
+  font-size:12px;
+  color:var(--muted);
+}
+.btn-logout{
+  border:none;
+  background:var(--red);
+  color:#fff;
+  font-weight:600;
+  padding:8px 14px;
+  border-radius:999px;
+  cursor:pointer;
+  box-shadow:0 3px 8px rgba(248,113,113,.45);
+}
+
+/* LAYOUT PRINCIPAL -------------------------------------------------------- */
+
+.layout{
+  display:grid;
+  grid-template-columns: 210px 1fr;
+  min-height:calc(100vh - 60px);
+}
+
+/* Side */
+.side{
+  background:#eef2f7;
+  border-right:1px solid var(--line);
+  padding:18px 14px;
+}
+.side nav{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.side-item{
+  border:none;
+  background:transparent;
+  text-align:left;
+  padding:10px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:14px;
+  color:var(--muted);
+}
+.side-item.active{
+  background:#e0ebff;
+  color:var(--primary);
+  font-weight:600;
+}
+
+/* Main */
+.main{
+  padding:20px 26px 30px;
+}
+
+/* CARDS RESUMO ------------------------------------------------------------ */
+
+.cards{
+  display:flex;
+  gap:18px;
+  margin-bottom:24px;
+}
+.card{
+  background:var(--card);
+  border-radius:14px;
+  padding:18px 18px 16px;
+  box-shadow:0 4px 12px var(--shadow);
+  border:1px solid #e0e6ed;
+}
+.card.resumo{
+  flex:1;
+}
+.card-label{
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+.card-number{
+  font-size:26px;
+  font-weight:700;
+  color:var(--ink);
+}
+
+/* GRÁFICOS ------------------------------------------------------------ */
+
+.charts{
+  display:grid;
+  grid-template-columns: 2fr 1.3fr;
+  gap:18px;
+  margin-bottom:28px;
+}
+.card.grafico h2{
+  font-size:16px;
+  margin:0 0 10px;
+}
+
+/* GRID DUPLA: formulário + tabela médicos --------------------------- */
+
+.grid-dupla{
+  display:grid;
+  grid-template-columns: 1.1fr 1.4fr;
+  gap:18px;
+  margin-bottom:26px;
+}
+@media (max-width: 1040px){
+  .layout{
+    grid-template-columns: 60px 1fr;
+  }
+  .side nav .side-item span{ display:none; }
+  .grid-dupla{
+    grid-template-columns: 1fr;
+  }
+  .charts{
+    grid-template-columns:1fr;
+  }
+}
+
+/* FORM CADASTRO MÉDICO ---------------------------------------------- */
+
+.form-card h2,
+.tabela-card h2{
+  margin:0 0 12px;
+  font-size:18px;
+}
+
+.alert{
+  background:#fef3c7;
+  border:1px solid #fde68a;
+  padding:8px 10px;
+  border-radius:10px;
+  color:#92400e;
+  font-size:13px;
+  margin-bottom:10px;
+}
+
+.form-medico{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.campo{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.campo label{
+  font-size:13px;
+  color:var(--muted);
+}
+.campo input,
+.campo select{
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:8px 10px;
+  font-size:14px;
+}
+.campo-duplo{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+}
+@media (max-width:700px){
+  .campo-duplo{ grid-template-columns:1fr; }
+}
+
+.btn-salvar{
+  margin-top:6px;
+  align-self:flex-end;
+  border:none;
+  background:var(--primary);
+  color:#fff;
+  font-weight:600;
+  padding:9px 16px;
+  border-radius:999px;
+  cursor:pointer;
+}
+
+/* TABELAS ------------------------------------------------------------ */
+
+.tabela-card{
+  margin-top:0;
+}
+.tabela-wrap{
+  max-height:340px;
+  overflow:auto;
+  border-radius:12px;
+  border:1px solid var(--line);
+}
+.tabela-wrap table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+.tabela-wrap thead{
+  background:#f3f4f6;
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+.tabela-wrap th,
+.tabela-wrap td{
+  padding:8px 10px;
+  border-bottom:1px solid #e5e7eb;
+  text-align:left;
+}
+.tabela-wrap th{
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:#6b7280;
+}
+.td-vazio{
+  text-align:center;
+  color:var(--muted);
+}
+
+.inline-form{
+  margin:0;
+}
+
+/* Badges de status médico */
+.status-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:600;
+}
+.status-badge.ativo{
+  background:var(--green-soft);
+  color:var(--green);
+}
+.status-badge.inativo{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+/* Botões de ativar/inativar */
+.btn-status{
+  border:none;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:12px;
+  cursor:pointer;
+}
+.btn-status.inativar{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+.btn-status.ativar{
+  background:var(--green-soft);
+  color:var(--green);
+}
+
+/* CLIENTES CARD */
+.clientes-card{
+  margin-bottom:30px;
+}
