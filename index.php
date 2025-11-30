@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'login_c
   }
 }
 
-/* ==================== CADASTRO CLIENTE ==================== */
+/* ==================== CADASTRO CLIENTE (ÚNICO BLOCO CORRETO) ==================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'cadastro_cliente') {
   $nome     = trim($_POST['nome'] ?? '');
   $email    = trim($_POST['email'] ?? '');
@@ -108,37 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'cadastr
     $erro_cliente_cad = 'As senhas não conferem.';
   } else {
     // verificar se email ou cpf já existem
-    $chk = $conn->prepare("SELECT id FROM clientes WHERE email = ? OR cpf = ? LIMIT 1");
-    $chk->bind_param("ss", $email, $cpf);
-    $chk->execute();
-    $r = $chk->get_result();
-    if ($r && $r->num_rows > 0) {
-      $erro_cliente_cad = 'Já existe um cliente com este email ou CPF.';
-    } else {
-      $hash = password_hash($senha1, PASSWORD_DEFAULT);
-      $ins = $conn->prepare("INSERT INTO clientes (nome, email, cpf, telefone, senha) VALUES (?, ?, ?, ?, ?");
-      // correção: fecha parêntese no SQL
-    }
-  }
-}
-
-/* Pequena correção do INSERT que foi cortado acima */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'cadastro_cliente') {
-  // (repetindo a lógica, agora correta)
-  $nome     = trim($_POST['nome'] ?? '');
-  $email    = trim($_POST['email'] ?? '');
-  $cpf      = preg_replace('/\D+/', '', $_POST['cpf'] ?? '');
-  $telefone = trim($_POST['telefone'] ?? '');
-  $senha1   = $_POST['senha'] ?? '';
-  $senha2   = $_POST['senha2'] ?? '';
-
-  if ($nome === '' || $email === '' || $cpf === '' || $senha1 === '' || $senha2 === '') {
-    $erro_cliente_cad = 'Preencha todos os campos obrigatórios.';
-  } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    $erro_cliente_cad = 'Email inválido.';
-  } elseif ($senha1 !== $senha2) {
-    $erro_cliente_cad = 'As senhas não conferem.';
-  } else {
     $chk = $conn->prepare("SELECT id FROM clientes WHERE email = ? OR cpf = ? LIMIT 1");
     $chk->bind_param("ss", $email, $cpf);
     $chk->execute();
@@ -349,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'login_a
       width:100%;
       padding:9px 11px;
       border-radius:8px;
-      border:1px solid #d1d5db;
+      border:1px solid:#d1d5db;
       font-size:14px;
       outline:none;
       transition:border .15s, box-shadow .15s, background .15s;

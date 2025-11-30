@@ -4,7 +4,7 @@
   --line:      #d7dde3;
   --ink:       #1f2933;
   --muted:     #6c7480;
-  --primary:   #2563eb;   /* azul */
+  --primary:   #2563eb;
   --primary-soft:#dbeafe;
   --green:     #16a34a;
   --green-soft:#dcfce7;
@@ -12,13 +12,15 @@
   --shadow:    rgba(15,23,42,0.08);
 }
 
-*{ box-sizing:border-box; }
-
+/* RESET / GLOBAL */
+*{
+  box-sizing:border-box;
+}
 body{
   margin:0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
-  color: var(--ink);
+  color:var(--ink);
 }
 
 /* TOPO -------------------------------------------------------------------- */
@@ -116,6 +118,14 @@ body{
   font-weight:600;
 }
 
+/* HIDING / SHOWING SECTIONS */
+.sec-visivel{
+  display:block;
+}
+.sec-oculta{
+  display:none;
+}
+
 /* Main */
 .main{
   padding:20px 26px 30px;
@@ -157,9 +167,19 @@ body{
   gap:18px;
   margin-bottom:28px;
 }
+.card.grafico{
+  min-height: 320px;
+  position: relative;
+}
 .card.grafico h2{
   font-size:16px;
   margin:0 0 10px;
+}
+
+/* CANVAS RESPONSIVO */
+.card.grafico canvas{
+  width:100% !important;
+  height:260px !important;
 }
 
 /* GRID DUPLA: formulário + tabela médicos --------------------------- */
@@ -228,7 +248,9 @@ body{
   gap:10px;
 }
 @media (max-width:700px){
-  .campo-duplo{ grid-template-columns:1fr; }
+  .campo-duplo{
+    grid-template-columns:1fr;
+  }
 }
 
 .btn-salvar{
@@ -304,13 +326,14 @@ body{
   color:#b91c1c;
 }
 
-/* Botões de ativar/inativar */
+/* Botões ativar/inativar */
 .btn-status{
   border:none;
   border-radius:999px;
   padding:5px 10px;
   font-size:12px;
   cursor:pointer;
+  text-decoration:none;
 }
 .btn-status.inativar{
   background:#fee2e2;
@@ -324,4 +347,16 @@ body{
 /* CLIENTES CARD */
 .clientes-card{
   margin-bottom:30px;
+}
+
+/* RESPONSIVIDADE ADICIONAL */
+@media(max-width:900px){
+  .charts{
+    grid-template-columns:1fr;
+  }
+}
+@media(max-width:700px){
+  .cards{
+    flex-direction:column;
+  }
 }

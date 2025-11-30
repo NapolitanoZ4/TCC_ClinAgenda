@@ -685,7 +685,11 @@ if ($rpf && $rpf->num_rows > 0) {
 
 <script>
 // Descobre o próprio arquivo
-const SELF_URL = (()=>{ const p = new URL(location.href).pathname; const base = p.substring(p.lastIndexOf('/')+1) || 'medico.php'; return base; })();
+const SELF_URL = (()=>{ 
+  const p = new URL(location.href).pathname; 
+  const base = p.substring(p.lastIndexOf('/')+1) || 'medico.php'; 
+  return base; 
+})();
 
 // Tabs
 function mostrarSecao(secao, btn) {
@@ -696,7 +700,10 @@ function mostrarSecao(secao, btn) {
 
   if (secao === 'consultas') {
     const first = document.querySelector('.consultas-toolbar .btn-line[data-filtro="hoje"]');
-    if (first) { document.querySelectorAll('.consultas-toolbar .btn-line').forEach(b=>b.classList.remove('active')); first.classList.add('active'); }
+    if (first) { 
+      document.querySelectorAll('.consultas-toolbar .btn-line').forEach(b=>b.classList.remove('active')); 
+      first.classList.add('active'); 
+    }
     carregarConsultas('hoje');
   }
 }
@@ -723,21 +730,32 @@ function atualizarContador(el) {
   if (contador) contador.innerText = `${el.value.length}/${max}`;
 }
 
-// Calendário MEUS HORÁRIOS
-let dataAtual = new Date();
-let intervalo = { inicio: null, fim: null };
-let modoSelecao = 'unico';
+/* ==========================================================
+   CALENDÁRIO / INTERVALO DE DIAS - VISUAL
+   ========================================================== */
 
+let dataAtual    = new Date();
+let intervalo    = { inicio: null, fim: null }; // datas JS
+let modoSelecao  = 'unico';                    // 'unico' ou 'intervalo'
+let diaFocadoISO = null;                       // último dia clicado (YYYY-MM-DD)
+
+// Muda entre "Dia Único" e "Vários Dias"
 function mudarModoSelecao(modo) {
   modoSelecao = modo;
+
   document.getElementById('btn-dia-unico')?.classList.toggle('ativo', modo === 'unico');
   document.getElementById('btn-varios-dias')?.classList.toggle('ativo', modo === 'intervalo');
+
+  // limpa seleção
   intervalo = { inicio: null, fim: null };
+  diaFocadoISO = null;
   document.getElementById("dias_selecionados").value = '';
   document.getElementById("horarios-box").classList.add("horarios-inativos");
+
   renderizarCalendario();
 }
 
+// Navegar mês
 function mudarMes(delta) {
   const dia = dataAtual.getDate();
   dataAtual.setDate(1);
@@ -748,23 +766,52 @@ function mudarMes(delta) {
   renderizarCalendario();
 }
 
+// Classe visual de cada célula do calendário conforme o intervalo
+function classeDiaNoIntervalo(data) {
+  if (!intervalo.inicio) return '';
+
+  const d = new Date(data);
+  const i = new Date(intervalo.inicio);
+  const f = intervalo.fim ? new Date(intervalo.fim) : new Date(intervalo.inicio);
+
+  d.setHours(0,0,0,0);
+  i.setHours(0,0,0,0);
+  f.setHours(0,0,0,0);
+
+  if (d.getTime() === i.getTime() || d.getTime() === f.getTime()) {
+    return 'dia-borda';           // extremidades → verde forte
+  }
+  if (d > i && d < f) {
+    return 'dia-intermediario';   // meio do intervalo → verde claro
+  }
+  return '';
+}
+
+// Renderiza o calendário do mês atual
 function renderizarCalendario() {
-  const grid = document.getElementById("calendar-grid");
+  const grid   = document.getElementById("calendar-grid");
   const titulo = document.getElementById("mes-ao");
   grid.innerHTML = "";
 
   const ano = dataAtual.getFullYear();
   const mes = dataAtual.getMonth();
   const primeiroDia = new Date(ano, mes, 1).getDay();
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const diasNoMes   = new Date(ano, mes + 1, 0).getDate();
 
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const hoje = new Date(); 
+  hoje.setHours(0, 0, 0, 0);
+
   titulo.innerText = `${dataAtual.toLocaleString('pt-BR', { month: 'long' })} ${ano}`;
 
-  for (let i = 0; i < primeiroDia; i++) grid.appendChild(document.createElement('div'));
+  // espaços vazios antes do dia 1
+  for (let i = 0; i < primeiroDia; i++) {
+    grid.appendChild(document.createElement('div'));
+  }
 
+  // dias do mês
   for (let dia = 1; dia <= diasNoMes; dia++) {
-    const data = new Date(ano, mes, dia); data.setHours(0,0,0,0);
+    const data = new Date(ano, mes, dia); 
+    data.setHours(0,0,0,0);
     const dataISO = data.toISOString().split('T')[0];
 
     const div = document.createElement("div");
@@ -781,54 +828,83 @@ function renderizarCalendario() {
   }
 }
 
-function classeDiaNoIntervalo(data) {
-  const d = new Date(data);
-  const i = intervalo.inicio ? new Date(intervalo.inicio) : null;
-  const f = intervalo.fim ? new Date(intervalo.fim) : null;
-  if (!i && !f) return "";
-  if (i && !f && d.getTime() === i.getTime()) return "dia-borda";
-  if (i && f) {
-    if (d.getTime() === i.getTime() || d.getTime() === f.getTime()) return "dia-borda";
-    if (d > i && d < f) return "dia-intermediario";
-  }
-  return "";
-}
-
+// Quando o médico clica em um dia do calendário
 function selecionarDia(data) {
+  const iso = data.toISOString().split('T')[0];
+  diaFocadoISO = iso;
+
   if (modoSelecao === 'unico') {
-    intervalo.inicio = data; intervalo.fim = data;
+    intervalo.inicio = data;
+    intervalo.fim    = data;
   } else {
-    if (!intervalo.inicio || intervalo.fim) { intervalo.inicio = data; intervalo.fim = null; }
-    else {
-      if (data < intervalo.inicio) { intervalo.fim = intervalo.inicio; intervalo.inicio = data; }
-      else { intervalo.fim = data; }
+    if (!intervalo.inicio || intervalo.fim) {
+      // começando novo intervalo
+      intervalo.inicio = data;
+      intervalo.fim    = null;
+    } else {
+      // fechando intervalo
+      if (data < intervalo.inicio) {
+        intervalo.fim    = intervalo.inicio;
+        intervalo.inicio = data;
+      } else {
+        intervalo.fim = data;
+      }
     }
   }
+
   preencherDiasSelecionados();
-  document.getElementById("horarios-box").classList.remove("horarios-inativos");
-  renderizarCalendario();
+  renderizarCalendario();                // redesenha com verde forte / claro
+
+  if (document.getElementById("dias_selecionados").value !== '') {
+    document.getElementById("horarios-box").classList.remove("horarios-inativos");
+  }
+
+  // sempre que mudar de dia, redesenha horários e aplica bloqueios do dia focado
+  desenharListaHorarios();
+  if (diaFocadoISO) {
+    carregarBloqueiosDia(diaFocadoISO);
+  }
 }
 
+// Preenche o hidden com todos os dias (YYYY-MM-DD) selecionados no intervalo
 function preencherDiasSelecionados() {
   const campo = document.getElementById("dias_selecionados");
-  if (!intervalo.inicio || !intervalo.fim) { campo.value = ""; return; }
-  let atual = new Date(intervalo.inicio); atual.setHours(0,0,0,0);
-  const fim = new Date(intervalo.fim); fim.setHours(0,0,0,0);
+  if (!intervalo.inicio) {
+    campo.value = '';
+    return;
+  }
+
+  const inicio = new Date(intervalo.inicio);
+  const fim    = intervalo.fim ? new Date(intervalo.fim) : new Date(intervalo.inicio);
+
+  inicio.setHours(0,0,0,0);
+  fim.setHours(0,0,0,0);
+
   const dias = [];
+  let atual = new Date(inicio);
+
   while (atual <= fim) {
     dias.push(atual.toISOString().split('T')[0]);
     atual.setDate(atual.getDate() + 1);
   }
+
   campo.value = dias.join(',');
 }
 
-// Horários padrão
+/* ==========================================================
+   HORÁRIOS - BOTÕES E BLOQUEIOS
+   ========================================================== */
+
+// Gera slots de 40 em 40 min, pulando almoço (11h–13h)
 function gerarSlotsDoDia() {
   const slots = [];
   let t = 8 * 60;
   const fim = 17 * 60 + 40;
   while (t <= fim) {
-    if (t >= 11 * 60 && t < 13 * 60) { t = 13 * 60; continue; }
+    if (t >= 11 * 60 && t < 13 * 60) { 
+      t = 13 * 60; 
+      continue; 
+    }
     const h = String(Math.floor(t / 60)).padStart(2, '0');
     const m = String(t % 60).padStart(2, '0');
     slots.push(`${h}:${m}`);
@@ -837,9 +913,12 @@ function gerarSlotsDoDia() {
   return slots;
 }
 
+// Desenha a grade de horários
 function desenharListaHorarios() {
   const grid = document.getElementById("lista-horarios");
+  if (!grid) return;
   grid.innerHTML = "";
+
   gerarSlotsDoDia().forEach(h => {
     const btn = document.createElement("div");
     btn.className = "horario";
@@ -848,6 +927,7 @@ function desenharListaHorarios() {
     grid.appendChild(btn);
   });
 
+  // placeholders só para manter grade harmoniosa
   const totalDesejado = 16;
   const falta = Math.max(0, totalDesejado - grid.children.length);
   for (let i = 0; i < falta; i++) {
@@ -858,6 +938,29 @@ function desenharListaHorarios() {
   }
 }
 
+// Carrega horários bloqueados do dia clicado e pinta como bloqueado
+function carregarBloqueiosDia(dataISO) {
+  if (!dataISO) return;
+
+  fetch(SELF_URL + '?action=listar_bloqueios&data=' + encodeURIComponent(dataISO))
+    .then(r => r.json())
+    .then(j => {
+      if (!j || !j.ok) return;
+      const bloqueados = j.bloqueios || [];
+      const setBloq = new Set(bloqueados);
+
+      document.querySelectorAll('#lista-horarios .horario').forEach(btn => {
+        if (btn.classList.contains('fantasma')) return;
+        const h = btn.textContent.trim().substring(0,5);
+        if (setBloq.has(h)) {
+          btn.classList.add('bloqueado');
+        }
+      });
+    })
+    .catch(()=>{ /* silencioso */ });
+}
+
+// Botão "Bloquear Todos" / "Limpar"
 function selecionarTodosHorarios(bloquear=true){
   document.querySelectorAll('#lista-horarios .horario').forEach(el=>{
     if (!el.classList.contains('fantasma')) {
@@ -866,6 +969,7 @@ function selecionarTodosHorarios(bloquear=true){
   });
 }
 
+// Antes de enviar o form, coleta horários bloqueados
 document.getElementById('form-horarios')?.addEventListener('submit', (e)=>{
   const marcados = [...document.querySelectorAll('#lista-horarios .horario.bloqueado')]
     .filter(el=>!el.classList.contains('fantasma'))
@@ -873,7 +977,10 @@ document.getElementById('form-horarios')?.addEventListener('submit', (e)=>{
   document.getElementById('horarios_selecionados').value = marcados.join(',');
 });
 
-/* ===== Consultas (AJAX) ===== */
+/* ==========================================================
+   CONSULTAS (AJAX)
+   ========================================================== */
+
 function marcarFiltro(btn){
   document.querySelectorAll('.consultas-toolbar .btn-line').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -999,7 +1106,10 @@ function atualizarConsulta(agendamentoId, novoStatus){
     .catch(()=> alert('Erro de rede.'));
 }
 
-// Prescrição
+/* ==========================================================
+   PRESCRIÇÃO DE EXAMES (SHEET)
+   ========================================================== */
+
 const sheet = document.getElementById('sheet-prescricao');
 const contextEl = document.getElementById('sheet-context');
 const itensBody = document.getElementById('itensBody');
@@ -1144,7 +1254,11 @@ function salvarPrescricao(){
 // Init
 window.addEventListener('DOMContentLoaded', () => {
   const bio = document.getElementById('bio');
-  if (bio) { atualizarContador(bio); bio.addEventListener('input', () => atualizarContador(bio)); }
+  if (bio) { 
+    atualizarContador(bio); 
+    bio.addEventListener('input', () => atualizarContador(bio)); 
+  }
+
   renderizarCalendario();
   desenharListaHorarios();
   mudarModoSelecao('unico');
