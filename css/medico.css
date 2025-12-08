@@ -1006,3 +1006,974 @@ select {
     gap: 12px;
   }
 }
+
+/* ===================== CHAT MÉDICO ===================== */
+
+#secao-chat .card {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 420px;
+}
+
+.chat-messages {
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  background: #f9fafb;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-message {
+  max-width: 75%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.chat-me {
+  margin-left: auto;
+  background: #22c55e;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-bot {
+  margin-right: auto;
+  background: #eef2ff;
+  color: #111827;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-info {
+  align-self: center;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-input-row input[type="text"] {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.chat-input-row input[type="text"]:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px rgba(34,197,94,0.15);
+}
+
+#secao-chat .cards-grid {
+  display: flex;
+  justify-content: center;
+}
+
+#secao-chat .card {
+  width: 80%;
+  max-width: 900px;
+}
+
+/* =========================================================
+   CHAT TIPO WHATSAPP
+   ========================================================= */
+
+#secao-chat .chat-layout {
+  display: flex;
+  gap: 0;
+  height: 520px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 118, 110, 0.18);
+}
+
+/* coluna esquerda */
+.chat-sidebar {
+  width: 320px;
+  max-width: 35%;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+}
+
+.chat-sidebar-header {
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.chat-conversas-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.chat-empty {
+  padding: 16px 10px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* item da lista de conversas */
+.chat-contact {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chat-contact:hover {
+  background: #e5f9f0;
+}
+
+.chat-contact.active {
+  background: #d1fae5;
+}
+
+.chat-contact-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #ecfdf5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.chat-contact-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-contact-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-contact-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-contact-time {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.chat-contact-last {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* nova conversa manual */
+.chat-new {
+  padding: 8px 10px 10px;
+  border-top: 1px solid #e5e7eb;
+  background: #f3f4f6;
+}
+
+.chat-new label {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.chat-new-row {
+  display: flex;
+  gap: 6px;
+}
+
+.chat-new-row input {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+}
+
+/* coluna direita */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ecfdf5;
+}
+
+/* cabeçalho direita */
+.chat-main-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #10b981;
+  color: #ecfdf5;
+  cursor: pointer;
+}
+
+.chat-main-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.chat-main-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+#chat-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-header-sub {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.chat-info-btn {
+  border: none;
+  background: transparent;
+  color: #ecfdf5;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* corpo: mensagens + painel info */
+.chat-main-body {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+}
+
+/* mensagens (igual antes, só garantindo que ocupa espaço) */
+.chat-mensagens {
+  flex: 1;
+  padding: 10px 14px;
+  overflow-y: auto;
+}
+
+/* painel info abre do lado direito */
+.chat-info-panel {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  border-left: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 10px;
+  transition: all 0.22s ease-out;
+  font-size: 13px;
+  color: #111827;
+}
+
+.chat-info-panel.open {
+  width: 220px;
+  opacity: 1;
+}
+
+.chat-info-panel h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* mensagens (bolhas) continuam usando suas classes antigas:
+   .chat-msg, .chat-me, .chat-outro, etc, que você já tem no CSS;
+   se quiser, depois mexemos nelas para ficarem 100% WhatsApp */
+
+   /* ================= CHAT – LISTA LATERAL (WHATSAPP-LIKE) ================= */
+
+.chat-layout {
+  display: flex;
+  gap: 16px;
+  height: 520px;              /* ajuste se quiser mais alto */
+}
+
+.chat-sidebar {
+  width: 260px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-sidebar-header {
+  padding: 10px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.chat-conversas-list {
+  flex: 1;
+  overflow-y: auto;           /* barra de rolagem */
+  padding: 8px 6px;
+}
+
+/* Cada contato da lista */
+.chat-contact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease-out;
+}
+
+.chat-contact:hover {
+  background: #eef2ff;
+}
+
+.chat-contact.active {
+  background: #e0e7ff;
+}
+
+/* Avatar redondinho */
+.chat-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #374151;
+}
+
+.chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Textos do contato */
+.chat-contact-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-contact-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.chat-contact-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.chat-contact-time {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.chat-contact-last {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.chat-empty {
+  padding: 10px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* =========================
+   CHAT – AJUSTE DE LAYOUT
+   ========================= */
+
+/* Centraliza o chat e coloca um limite de largura */
+#secao-chat.section {
+  padding: 24px 0 40px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Card do chat menos esticado, com sombra e borda arredondada */
+#secao-chat .chat-layout {
+  width: min(1180px, 100% - 40px);  /* limite máximo + margem lateral */
+  max-height: 78vh;
+  min-height: 480px;
+
+  margin: 0 auto 24px;
+
+  display: flex;
+  border-radius: 22px;
+  overflow: hidden;
+
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 118, 110, 0.18);
+}
+
+/* Sidebar mais estreita e bem marcada */
+#secao-chat .chat-sidebar {
+  width: 260px;
+  min-width: 260px;
+  border-right: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+/* Cabeçalho “Conversas” fixo na sidebar */
+#secao-chat .chat-sidebar-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+/* Lista de contatos com scroll independente */
+#secao-chat .chat-conversas-list {
+  max-height: calc(78vh - 60px);
+  overflow-y: auto;
+}
+
+/* Área principal do chat um pouco mais “compacta” */
+#secao-chat .chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ecfdf3; /* verdinho bem claro */
+}
+
+/* Cabeçalho do chat fixo, sem grudar demais nas bordas */
+#secao-chat .chat-main-header {
+  padding: 10px 16px;
+}
+
+/* Corpo (mensagens + painel info) com respiro */
+#secao-chat .chat-main-body {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  padding: 10px 14px 4px;
+}
+
+/* Caixa de mensagens com altura controlada */
+#secao-chat .chat-mensagens {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #e9fdf2;
+  overflow-y: auto;
+}
+
+/* Input mais “encaixado” no card */
+#secao-chat .chat-input {
+  padding: 8px 14px 12px;
+  border-top: 1px solid #d1fae5;
+}
+
+/* Campo de texto não tão largo para não encostar nas bordas */
+#secao-chat .chat-input input[type="text"] {
+  border-radius: 999px;
+  padding-inline: 14px;
+}
+
+/* Mensagens com largura máxima e espaçamento */
+#secao-chat .chat-msg {
+  max-width: 72%;
+}
+
+/* =========================
+   RESPONSIVO
+   ========================= */
+
+@media (max-width: 1100px) {
+  #secao-chat .chat-layout {
+    width: min(100%, 100% - 20px);
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 860px) {
+  #secao-chat .chat-layout {
+    flex-direction: column;
+    max-height: none;
+  }
+
+  #secao-chat .chat-sidebar {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  #secao-chat .chat-conversas-list {
+    max-height: 220px;
+  }
+}
+
+/* ===================== CHAT – SEÇÃO ===================== */
+/* por padrão o chat fica escondido, só aparece quando a aba estiver .active */
+#secao-chat.section {
+  display: none;
+  padding: 24px 0 40px;
+  justify-content: center;
+}
+
+#secao-chat.section.active {
+  display: flex; /* sobrescreve o .section.active { display:block } */
+}
+
+/* ===================== CHAT – LAYOUT GERAL ===================== */
+
+#secao-chat .chat-layout {
+  width: min(1180px, 100% - 40px);
+  max-height: 78vh;
+  min-height: 480px;
+  margin: 0 auto 24px;
+
+  display: flex;
+  border-radius: 22px;
+  overflow: hidden;
+
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 118, 110, 0.18);
+}
+
+/* coluna esquerda – lista de conversas */
+#secao-chat .chat-sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+#secao-chat .chat-sidebar-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+#secao-chat .chat-conversas-list {
+  flex: 1;
+  max-height: calc(78vh - 60px);
+  overflow-y: auto;
+  padding: 8px 6px;
+}
+
+.chat-empty {
+  padding: 10px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* item da lista de conversas */
+.chat-contact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease-out;
+}
+
+.chat-contact:hover {
+  background: #e5f9f0;
+}
+
+.chat-contact.active {
+  background: #d1fae5;
+}
+
+.chat-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chat-contact-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-contact-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.chat-contact-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-contact-time {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.chat-contact-last {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===================== CHAT – COLUNA DIREITA ===================== */
+
+#secao-chat .chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ecfdf5;
+}
+
+/* cabeçalho do chat */
+#secao-chat .chat-main-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #10b981;
+  color: #ecfdf5;
+}
+
+.chat-main-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.chat-main-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+#chat-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#chat-header-sub {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.chat-info-btn {
+  border: none;
+  background: transparent;
+  color: #ecfdf5;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* corpo: mensagens + painel info */
+.chat-main-body {
+  flex: 1;
+  display: flex;
+  position: relative;
+  gap: 0;
+  padding: 10px 14px 4px;
+}
+
+/* área de mensagens */
+.chat-mensagens {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #e9fdf2;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* painel info lateral (opcional) */
+.chat-info-panel {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  border-left: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 10px;
+  transition: all 0.22s ease-out;
+  font-size: 13px;
+  color: #111827;
+}
+
+.chat-info-panel.show {
+  width: 220px;
+  opacity: 1;
+}
+
+/* ===================== CHAT – INPUT ===================== */
+
+.chat-input {
+  padding: 8px 14px 12px;
+  border-top: 1px solid #d1fae5;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-input-row input[type="text"] {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  font-size: 14px;
+  background: #ffffff;
+}
+
+.chat-input-row input[type="text"]:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.20);
+}
+
+.chat-input-row .btn {
+  border-radius: 999px;
+}
+
+/* ===================== CHAT – BOLHAS DE MENSAGEM ===================== */
+
+.chat-msg {
+  max-width: 72%;
+  padding: 8px 10px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.35;
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+}
+
+/* médico → direita (verde) */
+.chat-me {
+  align-self: flex-end;
+  background: #22c55e;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+  margin-left: auto;
+}
+
+/* paciente → esquerda (branco) */
+.chat-outro {
+  align-self: flex-start;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-bottom-left-radius: 4px;
+  margin-right: auto;
+}
+
+/* mensagens de sistema (informativas) */
+.chat-sistema {
+  align-self: center;
+  background: #e5e7eb;
+  color: #374151;
+  border-radius: 999px;
+  padding-inline: 14px;
+}
+
+/* horário no canto inferior da bolha */
+.chat-hora {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.8;
+  align-self: flex-end;
+}
+
+/* ===================== CHAT – RESPONSIVO ===================== */
+
+@media (max-width: 1100px) {
+  #secao-chat .chat-layout {
+    width: min(100%, 100% - 20px);
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 860px) {
+  #secao-chat .chat-layout {
+    flex-direction: column;
+    max-height: none;
+  }
+
+  #secao-chat .chat-sidebar {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  #secao-chat .chat-conversas-list {
+    max-height: 220px;
+  }
+}
+
+/* Corpo do chat: mensagens + info */
+.chat-main-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;         /* ESSENCIAL p/ o scroll funcionar dentro do flex */
+}
+
+/* Área das mensagens (onde ficam as bolhas) */
+.chat-mensagens {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  padding: 8px 16px 12px;
+  overflow-y: auto;      /* barra lateral aqui */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Scrollbar só na área das mensagens */
+.chat-mensagens::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-mensagens::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-mensagens::-webkit-scrollbar-thumb {
+  background: rgba(15, 118, 110, 0.28);
+  border-radius: 999px;
+}
+
+.chat-mensagens::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 118, 110, 0.45);
+}
+
+/* barra inferior do chat ocupando toda a largura */
+.chat-input {
+  padding: 12px 20px;             /* aumenta e encosta nas bordas */
+  border-top: 1px solid #d1fae5;
+  display: flex;
+  gap: 12px;
+  background: #ffffff;
+}
+
+/* input mais largo e moderno */
+.chat-input input[type="text"] {
+  flex: 1;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-size: 14px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.chat-input input[type="text"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.25);
+  background: #ffffff;
+}
+
+/* botão enviar alinhado à direita */
+.chat-input button {
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+}

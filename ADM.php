@@ -8,6 +8,18 @@ if ($mysqli->connect_error) {
 }
 $mysqli->set_charset("utf8mb4");
 
+/* ================== LOGOUT DENTRO DO ADM.php ================== */
+if (isset($_GET['acao']) && $_GET['acao'] === 'logout') {
+  // Limpa e destrói a sessão do ADM
+  session_unset();
+  session_destroy();
+
+  // Evita cache e volta para o login
+  header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+  header("Location: index.php");
+  exit;
+}
+
 /* ================== VERIFICA LOGIN ADM ================== */
 if (!isset($_SESSION['id_adm'])) {
   header("Location: index.php");
@@ -283,7 +295,7 @@ if ($r) {
       <span class="adm-nome"><?= safe($adm['nome']) ?></span>
       <span class="adm-email"><?= safe($adm['email']) ?></span>
     </div>
-    <button class="btn-logout" onclick="window.location.href='logout.php'">
+    <button type="button" class="btn-logout" onclick="window.location.href='ADM.php?acao=logout'">
       Sair
     </button>
   </div>

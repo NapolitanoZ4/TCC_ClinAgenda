@@ -1,4 +1,4 @@
-<?php  
+<?php   
 session_start();
 date_default_timezone_set('America/Sao_Paulo');
 
@@ -12,6 +12,9 @@ if (!isset($_SESSION['id_medico'])) {
   exit;
 }
 
+// ID do médico logado (FALTAVA ISSO)
+$id = (int)$_SESSION['id_medico'];
+
 if (isset($_GET['logout'])) {
   session_unset();
   session_destroy();
@@ -19,7 +22,8 @@ if (isset($_GET['logout'])) {
   exit();
 }
 
-$id = intval($_SESSION['id_medico']);
+// ID do paciente para o chat (ex.: medico.php?paciente=5)
+$chatPacienteId = isset($_GET['paciente']) ? (int)$_GET['paciente'] : 0;
 
 /* ==================== HELPERS ==================== */
 function norm_time($h) {
@@ -95,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'upload_
         }
       }
 
-      header("Location: medico.php?foto=ok");
+      header("Location: Medico.php?foto=ok");
       exit;
     } else {
       echo "<script>alert('Falha ao salvar o arquivo. Verifique permissões da pasta uploads/.');</script>";
@@ -145,61 +149,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_
     $ins2->execute();
   }
 
-  header("Location: medico.php?salvo=1");
+  header("Location: Medico.php?salvo=1");
   exit;
 }
 
-/* ==================== SALVAR BLOQUEIOS ==================== */
+/* ==================== SALVAR BLOQUEIOS (SALVAR MUDANÇAS) ==================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_bloqueios'])) {
   $dias = array_filter(array_map('trim', explode(',', $_POST['dias_selecionados'] ?? '')));
   $horariosBrutos = array_filter(array_map('trim', explode(',', $_POST['horarios_selecionados'] ?? '')));
 
-  $horarios = [];
+  $horariosHM = [];
   foreach ($horariosBrutos as $h) {
-    $hNorm = norm_time($h);
-    if (is_valid_time_hms($hNorm)) $horarios[] = $hNorm;
-    elseif (is_valid_time_hm($h))  $horarios[] = $h.':00';
+    if (is_valid_time_hm($h)) {
+      $horariosHM[] = $h;
+    }
   }
 
-  $hoje = new DateTime('today', new DateTimeZone('America/Sao_Paulo'));
-  $insOk=0; $remOk=0; $ignorados=0;
+  if (empty($dias)) {
+    echo "<script>alert('Selecione ao menos um dia no calendário.');</script>";
+  } else {
+    $hoje = new DateTime('today', new DateTimeZone('America/Sao_Paulo'));
+    $insOk = 0;
+    $remOk = 0;
+    $ignorados = 0;
 
-  foreach ($dias as $data) {
-    if (!is_valid_date($data)) { $ignorados++; continue; }
+    $chkAg = $conn->prepare("
+      SELECT 1 FROM agendamentos 
+      WHERE medico_id=? AND data=? AND horario=? 
+        AND status IN ('pendente','confirmado') 
+      LIMIT 1
+    ");
 
-    $dSel = DateTime::createFromFormat('Y-m-d', $data, new DateTimeZone('America/Sao_Paulo'));
-    if (!$dSel || $dSel < $hoje) { $ignorados++; continue; }
+    foreach ($dias as $data) {
+      if (!is_valid_date($data)) { $ignorados++; continue; }
 
-    foreach ($horarios as $hora) {
-      $chkAg = $conn->prepare("SELECT 1 FROM agendamentos WHERE medico_id=? AND data=? AND horario=? AND status IN ('pendente','confirmado') LIMIT 1");
-      $chkAg->bind_param("iss", $id, $data, $hora);
-      $chkAg->execute();
-      if ($chkAg->get_result()->num_rows) { $ignorados++; continue; }
+      $dSel = DateTime::createFromFormat('Y-m-d', $data, new DateTimeZone('America/Sao_Paulo'));
+      if (!$dSel || $dSel < $hoje) { $ignorados++; continue; }
 
-      $check = $conn->prepare("SELECT id, ocupado FROM horarios_disponiveis WHERE medico_id=? AND data=? AND horario=?");
-      $check->bind_param("iss", $id, $data, $hora);
-      $check->execute();
-      $res = $check->get_result();
+      $selBloq = $conn->prepare("
+        SELECT id, DATE_FORMAT(horario, '%H:%i') AS h 
+        FROM horarios_disponiveis 
+        WHERE medico_id=? AND data=? AND ocupado=1
+      ");
+      $selBloq->bind_param("is", $id, $data);
+      $selBloq->execute();
+      $resBloq = $selBloq->get_result();
 
-      if ($res && $res->num_rows > 0) {
-        $row = $res->fetch_assoc();
-        if ((int)$row['ocupado'] === 1) {
+      $existentes = [];
+      while ($row = $resBloq->fetch_assoc()) {
+        $existentes[$row['h']] = (int)$row['id'];
+      }
+
+      $novosSet = [];
+      foreach ($horariosHM as $h) {
+        $novosSet[$h] = true;
+      }
+
+      foreach ($existentes as $h => $rowId) {
+        $horaHMS = $h . ':00';
+
+        $chkAg->bind_param("iss", $id, $data, $horaHMS);
+        $chkAg->execute();
+        $rAg = $chkAg->get_result();
+        if ($rAg && $rAg->num_rows) {
+          $ignorados++;
+          unset($novosSet[$h]);
+          continue;
+        }
+
+        if (!isset($novosSet[$h])) {
           $del = $conn->prepare("DELETE FROM horarios_disponiveis WHERE id=?");
-          $del->bind_param("i", $row['id']);
+          $del->bind_param("i", $rowId);
           if ($del->execute()) $remOk++;
         } else {
-          $up = $conn->prepare("UPDATE horarios_disponiveis SET ocupado=1 WHERE id=?");
-          $up->bind_param("i", $row['id']);
-          if ($up->execute()) $insOk++;
+          unset($novosSet[$h]);
         }
-      } else {
-        $ins = $conn->prepare("INSERT INTO horarios_disponiveis (medico_id, data, horario, ocupado) VALUES (?, ?, ?, 1)");
-        $ins->bind_param("iss", $id, $data, $hora);
+      }
+
+      foreach (array_keys($novosSet) as $h) {
+        $horaHMS = $h . ':00';
+
+        $chkAg->bind_param("iss", $id, $data, $horaHMS);
+        $chkAg->execute();
+        $rAg = $chkAg->get_result();
+        if ($rAg && $rAg->num_rows) {
+          $ignorados++;
+          continue;
+        }
+
+        $ins = $conn->prepare("
+          INSERT INTO horarios_disponiveis (medico_id, data, horario, ocupado) 
+          VALUES (?, ?, ?, 1)
+        ");
+        $ins->bind_param("iss", $id, $data, $horaHMS);
         if ($ins->execute()) $insOk++;
       }
     }
+
+    echo "<script>alert('Salvar Mudanças concluído. Bloqueados: {$insOk}, Desbloqueados: {$remOk}, Ignorados: {$ignorados}.');</script>";
   }
-  echo "<script>alert('Bloqueios atualizados. Criados: {$insOk}, Removidos: {$remOk}, Ignorados: {$ignorados}.');</script>";
 }
 
 /* ==================== ENDPOINT: LISTAR CONSULTAS (AJAX) ==================== */
@@ -431,6 +479,7 @@ if ($rpf && $rpf->num_rows > 0) {
     <button type="button" class="tab-btn active" data-target="perfil" onclick="mostrarSecao('perfil', this)">Perfil</button>
     <button type="button" class="tab-btn" data-target="horarios" onclick="mostrarSecao('horarios', this)">Meus Horários</button>
     <button type="button" class="tab-btn" data-target="consultas" onclick="mostrarSecao('consultas', this)">Consultas</button>
+    <button type="button" class="tab-btn" data-target="chat" onclick="mostrarSecao('chat', this)">Chat</button>
   </div>
 
   <!-- PERFIL -->
@@ -589,7 +638,7 @@ if ($rpf && $rpf->num_rows > 0) {
             <input type="hidden" name="horarios_selecionados" id="horarios_selecionados">
             <button type="button" class="btn-line" onclick="selecionarTodosHorarios(true)"><i class="fa-solid fa-ban"></i> Bloquear Todos</button>
             <button type="button" class="btn-line" onclick="selecionarTodosHorarios(false)"><i class="fa-solid fa-rotate-left"></i> Limpar</button>
-            <button type="submit" name="salvar_bloqueios" class="btn-salvar"><i class="fa-solid fa-floppy-disk"></i> Salvar Bloqueios</button>
+            <button type="submit" name="salvar_bloqueios" class="btn-salvar"><i class="fa-solid fa-floppy-disk"></i> Salvar Mudanças</button>
           </div>
         </form>
       </div>
@@ -629,20 +678,86 @@ if ($rpf && $rpf->num_rows > 0) {
 
 </div>
 
-<!-- Sheet de prescrição de exames -->
+<!-- CHAT MÉDICO ⇆ PACIENTE – LAYOUT TIPO WHATSAPP -->
+<div id="secao-chat" class="section">
+  <div class="chat-layout">
+    <aside class="chat-sidebar">
+  <div class="chat-sidebar-header">
+    <span>Conversas</span>
+  </div>
+
+  <!-- LISTA SCROLLÁVEL DE CONTATOS (PACIENTES) -->
+  <div id="chat-conversas-list" class="chat-conversas-list">
+    <!-- preenche via JS -->
+  </div>
+</aside>
+
+
+    <!-- COLUNA DIREITA: CHAT ATUAL -->
+    <section class="chat-main">
+      <!-- cabeçalho do chat (clique mostra/esconde info) -->
+      <div class="chat-main-header" onclick="toggleChatInfo()">
+        <div class="chat-main-avatar" id="chat-header-avatar">
+          <!-- iniciais do contato -->
+        </div>
+        <div class="chat-main-titles">
+          <div id="chat-header-title">Selecione uma conversa</div>
+          <div id="chat-header-sub" class="chat-header-sub">Nenhum chat ativo</div>
+        </div>
+        <button class="chat-info-btn" type="button"
+                onclick="toggleChatInfo(); event.stopPropagation();">
+          <i class="fa-solid fa-circle-info"></i>
+        </button>
+      </div>
+
+      <!-- corpo: mensagens + painel de info -->
+      <div class="chat-main-body">
+        <div id="chat-mensagens" class="chat-mensagens">
+          <div class="chat-msg chat-sistema">
+            Selecione uma conversa na lista à esquerda ou crie um novo chat.
+          </div>
+        </div>
+
+        <div id="chat-info-panel" class="chat-info-panel">
+          <h4>Informações do contato</h4>
+          <p><strong>Nome:</strong> <span id="chat-info-nome">—</span></p>
+          <p><strong>Tipo:</strong> <span id="chat-info-tipo">—</span></p>
+          <p><strong>ID:</strong> <span id="chat-info-id">—</span></p>
+          <!-- você pode acrescentar mais infos depois (email, telefone, etc) -->
+        </div>
+      </div>
+
+      <!-- input da mensagem -->
+      <div class="chat-input">
+        <input type="text" id="chat_texto" placeholder="Digite uma mensagem..."
+               onkeydown="if(event.key==='Enter'){enviarMsgChat();}">
+        <button type="button" class="btn-salvar" onclick="enviarMsgChat()">
+          <i class="fa-regular fa-paper-plane"></i> Enviar
+        </button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+
+<!-- ========== SHEET DE PRESCRIÇÃO DE EXAMES ========== -->
 <div id="sheet-prescricao" class="sheet" aria-hidden="true">
   <div class="sheet-box">
+
     <div class="sheet-header">
       <div>
         <h3 class="sheet-title">Prescrever Exames</h3>
         <div class="sheet-sub" id="sheet-context">Paciente — Consulta</div>
       </div>
+
       <div class="sheet-actions">
         <button class="btn danger" onclick="fecharSheet()">Fechar</button>
         <button class="btn primary" id="btnSalvarExames" onclick="salvarPrescricao()">Salvar exames</button>
       </div>
     </div>
 
+    <!-- BUSCA TUSS + ADICIONAR MANUAL -->
     <div class="grid-2">
       <div class="field ac-wrap">
         <label>Buscar TUSS (código ou nome)</label>
@@ -650,6 +765,7 @@ if ($rpf && $rpf->num_rows > 0) {
         <div id="acList" class="ac-list"></div>
         <div class="help">Se não existir a tabela <code>tuss_exames</code>, digite manualmente e adicione.</div>
       </div>
+
       <div class="field">
         <label>Adicionar manualmente</label>
         <div style="display:flex; gap:6px;">
@@ -660,6 +776,13 @@ if ($rpf && $rpf->num_rows > 0) {
       </div>
     </div>
 
+    <!-- EXAMES RÁPIDOS -->
+    <div class="quick-box">
+      <h4>Exames Rápidos</h4>
+      <div id="quick-exames" class="quick-grid"></div>
+    </div>
+
+    <!-- TABELA DE ITENS -->
     <table class="table" id="tabItens">
       <thead>
         <tr>
@@ -678,26 +801,37 @@ if ($rpf && $rpf->num_rows > 0) {
     </table>
 
     <div class="help" style="margin-top:8px">
-      Exames criados com status <b>pendente</b>. Campos opcionais são gravados somente se a coluna existir em <code>exames</code>.
+      Exames criados com status <b>pendente</b>. Campos opcionais só são salvos se existirem na tabela <code>exames</code>.
     </div>
+
   </div>
 </div>
 
 <script>
 // Descobre o próprio arquivo
-const SELF_URL = (()=>{ 
+const SELF_URL = (() => { 
   const p = new URL(location.href).pathname; 
-  const base = p.substring(p.lastIndexOf('/')+1) || 'medico.php'; 
+  const base = p.substring(p.lastIndexOf('/')+1) || 'Medico.php'; 
   return base; 
 })();
 
-// Tabs
-function mostrarSecao(secao, btn) {
-  document.querySelectorAll('.section').forEach(div => div.classList.remove('active'));
-  document.getElementById('secao-' + secao).classList.add('active');
-  document.querySelectorAll('#tabs .tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+/* =========================================================
+   TABS (Perfil / Meus Horários / Consultas / Chat)
+   ========================================================= */
+let CHAT_LIST_CARREGADA = false; // usado em mostrarSecao
 
+function mostrarSecao(secao, btn) {
+  // esconde todas as seções
+  document.querySelectorAll('.section').forEach(div => div.classList.remove('active'));
+  // mostra a seção clicada
+  const alvo = document.getElementById('secao-' + secao);
+  if (alvo) alvo.classList.add('active');
+
+  // estado visual dos botões
+  document.querySelectorAll('#tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  // ações ao trocar de aba
   if (secao === 'consultas') {
     const first = document.querySelector('.consultas-toolbar .btn-line[data-filtro="hoje"]');
     if (first) { 
@@ -705,10 +839,16 @@ function mostrarSecao(secao, btn) {
       first.classList.add('active'); 
     }
     carregarConsultas('hoje');
+  } else if (secao === 'chat') {
+    if (!CHAT_LIST_CARREGADA) {
+      carregarListaConversas();
+    }
   }
 }
 
-// Upload foto
+/* =========================================================
+   UPLOAD DE FOTO
+   ========================================================= */
 const inputFoto = document.getElementById('input-foto');
 const imgFoto   = document.getElementById('foto-perfil');
 const formFoto  = document.getElementById('form-foto');
@@ -722,7 +862,9 @@ if (inputFoto && imgFoto && formFoto) {
   });
 }
 
-// Contador bio
+/* =========================================================
+   CONTADOR DE BIOGRAFIA
+   ========================================================= */
 function atualizarContador(el) {
   const max = el.maxLength || 600;
   if (el.value.length > max) el.value = el.value.slice(0, max);
@@ -730,23 +872,21 @@ function atualizarContador(el) {
   if (contador) contador.innerText = `${el.value.length}/${max}`;
 }
 
-/* ==========================================================
+/* =========================================================
    CALENDÁRIO / INTERVALO DE DIAS - VISUAL
-   ========================================================== */
+   ========================================================= */
 
 let dataAtual    = new Date();
-let intervalo    = { inicio: null, fim: null }; // datas JS
-let modoSelecao  = 'unico';                    // 'unico' ou 'intervalo'
-let diaFocadoISO = null;                       // último dia clicado (YYYY-MM-DD)
+let intervalo    = { inicio: null, fim: null }; 
+let modoSelecao  = 'unico';                    
+let diaFocadoISO = null;                       
 
-// Muda entre "Dia Único" e "Vários Dias"
 function mudarModoSelecao(modo) {
   modoSelecao = modo;
 
   document.getElementById('btn-dia-unico')?.classList.toggle('ativo', modo === 'unico');
   document.getElementById('btn-varios-dias')?.classList.toggle('ativo', modo === 'intervalo');
 
-  // limpa seleção
   intervalo = { inicio: null, fim: null };
   diaFocadoISO = null;
   document.getElementById("dias_selecionados").value = '';
@@ -755,7 +895,6 @@ function mudarModoSelecao(modo) {
   renderizarCalendario();
 }
 
-// Navegar mês
 function mudarMes(delta) {
   const dia = dataAtual.getDate();
   dataAtual.setDate(1);
@@ -766,7 +905,6 @@ function mudarMes(delta) {
   renderizarCalendario();
 }
 
-// Classe visual de cada célula do calendário conforme o intervalo
 function classeDiaNoIntervalo(data) {
   if (!intervalo.inicio) return '';
 
@@ -779,18 +917,19 @@ function classeDiaNoIntervalo(data) {
   f.setHours(0,0,0,0);
 
   if (d.getTime() === i.getTime() || d.getTime() === f.getTime()) {
-    return 'dia-borda';           // extremidades → verde forte
+    return 'dia-borda';
   }
   if (d > i && d < f) {
-    return 'dia-intermediario';   // meio do intervalo → verde claro
+    return 'dia-intermediario';
   }
   return '';
 }
 
-// Renderiza o calendário do mês atual
 function renderizarCalendario() {
   const grid   = document.getElementById("calendar-grid");
   const titulo = document.getElementById("mes-ao");
+  if (!grid || !titulo) return;
+
   grid.innerHTML = "";
 
   const ano = dataAtual.getFullYear();
@@ -803,12 +942,10 @@ function renderizarCalendario() {
 
   titulo.innerText = `${dataAtual.toLocaleString('pt-BR', { month: 'long' })} ${ano}`;
 
-  // espaços vazios antes do dia 1
   for (let i = 0; i < primeiroDia; i++) {
     grid.appendChild(document.createElement('div'));
   }
 
-  // dias do mês
   for (let dia = 1; dia <= diasNoMes; dia++) {
     const data = new Date(ano, mes, dia); 
     data.setHours(0,0,0,0);
@@ -828,7 +965,6 @@ function renderizarCalendario() {
   }
 }
 
-// Quando o médico clica em um dia do calendário
 function selecionarDia(data) {
   const iso = data.toISOString().split('T')[0];
   diaFocadoISO = iso;
@@ -838,11 +974,9 @@ function selecionarDia(data) {
     intervalo.fim    = data;
   } else {
     if (!intervalo.inicio || intervalo.fim) {
-      // começando novo intervalo
       intervalo.inicio = data;
       intervalo.fim    = null;
     } else {
-      // fechando intervalo
       if (data < intervalo.inicio) {
         intervalo.fim    = intervalo.inicio;
         intervalo.inicio = data;
@@ -853,22 +987,22 @@ function selecionarDia(data) {
   }
 
   preencherDiasSelecionados();
-  renderizarCalendario();                // redesenha com verde forte / claro
+  renderizarCalendario();
 
   if (document.getElementById("dias_selecionados").value !== '') {
     document.getElementById("horarios-box").classList.remove("horarios-inativos");
   }
 
-  // sempre que mudar de dia, redesenha horários e aplica bloqueios do dia focado
   desenharListaHorarios();
   if (diaFocadoISO) {
     carregarBloqueiosDia(diaFocadoISO);
   }
 }
 
-// Preenche o hidden com todos os dias (YYYY-MM-DD) selecionados no intervalo
 function preencherDiasSelecionados() {
   const campo = document.getElementById("dias_selecionados");
+  if (!campo) return;
+
   if (!intervalo.inicio) {
     campo.value = '';
     return;
@@ -891,11 +1025,10 @@ function preencherDiasSelecionados() {
   campo.value = dias.join(',');
 }
 
-/* ==========================================================
+/* =========================================================
    HORÁRIOS - BOTÕES E BLOQUEIOS
-   ========================================================== */
+   ========================================================= */
 
-// Gera slots de 40 em 40 min, pulando almoço (11h–13h)
 function gerarSlotsDoDia() {
   const slots = [];
   let t = 8 * 60;
@@ -913,7 +1046,6 @@ function gerarSlotsDoDia() {
   return slots;
 }
 
-// Desenha a grade de horários
 function desenharListaHorarios() {
   const grid = document.getElementById("lista-horarios");
   if (!grid) return;
@@ -927,7 +1059,6 @@ function desenharListaHorarios() {
     grid.appendChild(btn);
   });
 
-  // placeholders só para manter grade harmoniosa
   const totalDesejado = 16;
   const falta = Math.max(0, totalDesejado - grid.children.length);
   for (let i = 0; i < falta; i++) {
@@ -938,7 +1069,6 @@ function desenharListaHorarios() {
   }
 }
 
-// Carrega horários bloqueados do dia clicado e pinta como bloqueado
 function carregarBloqueiosDia(dataISO) {
   if (!dataISO) return;
 
@@ -957,10 +1087,9 @@ function carregarBloqueiosDia(dataISO) {
         }
       });
     })
-    .catch(()=>{ /* silencioso */ });
+    .catch(()=>{ });
 }
 
-// Botão "Bloquear Todos" / "Limpar"
 function selecionarTodosHorarios(bloquear=true){
   document.querySelectorAll('#lista-horarios .horario').forEach(el=>{
     if (!el.classList.contains('fantasma')) {
@@ -969,17 +1098,17 @@ function selecionarTodosHorarios(bloquear=true){
   });
 }
 
-// Antes de enviar o form, coleta horários bloqueados
 document.getElementById('form-horarios')?.addEventListener('submit', (e)=>{
   const marcados = [...document.querySelectorAll('#lista-horarios .horario.bloqueado')]
     .filter(el=>!el.classList.contains('fantasma'))
-    .map(el=>el.textContent.trim());
-  document.getElementById('horarios_selecionados').value = marcados.join(',');
+    .map(el=>el.textContent.trim().substring(0,5));
+  const campo = document.getElementById('horarios_selecionados');
+  if (campo) campo.value = marcados.join(',');
 });
 
-/* ==========================================================
+/* =========================================================
    CONSULTAS (AJAX)
-   ========================================================== */
+   ========================================================= */
 
 function marcarFiltro(btn){
   document.querySelectorAll('.consultas-toolbar .btn-line').forEach(b=>b.classList.remove('active'));
@@ -1002,9 +1131,12 @@ function renderPage(){
   if (total === 0) {
     box.classList.add('vazia');
     box.innerHTML = '<div class="hint">Nenhuma consulta para o filtro selecionado.</div>';
-    document.getElementById('pageInfo').textContent = '0 / 0';
-    document.getElementById('btnPrev').disabled = true;
-    document.getElementById('btnNext').disabled = true;
+    const info = document.getElementById('pageInfo');
+    const prev = document.getElementById('btnPrev');
+    const next = document.getElementById('btnNext');
+    if (info) info.textContent = '0 / 0';
+    if (prev) prev.disabled = true;
+    if (next) next.disabled = true;
     return;
   }
 
@@ -1023,20 +1155,20 @@ function renderPage(){
     const nome = (it.cliente_nome || 'Paciente').replace(/&/g,'&amp;').replace(/</g,'&lt;');
     const pacienteJS = (it.cliente_nome||'').replace(/'/g,"\\'");
 
-    const btnExames = `<button class="btn" onclick="abrirSheet(${it.id}, ${it.cliente_id}, '${pacienteJS}', '${(it.data||'')}', '${(it.hora||'')}')">Exames</button>`;
+    const btnExames = `<button class="btn" type="button" onclick="abrirSheet(${it.id}, ${it.cliente_id}, '${pacienteJS}', '${(it.data||'')}', '${(it.hora||'')}')">Exames</button>`;
 
     let acoes = '';
     if (st === 'pendente') {
       acoes = `
         <div style="display:flex; gap:6px;">
-          <button class="btn-line" onclick="atualizarConsulta(${it.id}, 'confirmado')">Confirmar</button>
-          <button class="btn-line" onclick="atualizarConsulta(${it.id}, 'cancelado')">Cancelar</button>
+          <button class="btn-line" type="button" onclick="atualizarConsulta(${it.id}, 'confirmado')">Confirmar</button>
+          <button class="btn-line" type="button" onclick="atualizarConsulta(${it.id}, 'cancelado')">Cancelar</button>
           ${btnExames}
         </div>`;
     } else if (st === 'confirmado') {
       acoes = `
         <div style="display:flex; gap:6px;">
-          <button class="btn-line" onclick="atualizarConsulta(${it.id}, 'cancelado')">Cancelar</button>
+          <button class="btn-line" type="button" onclick="atualizarConsulta(${it.id}, 'cancelado')">Cancelar</button>
           ${btnExames}
         </div>`;
     } else {
@@ -1060,9 +1192,12 @@ function renderPage(){
 
   box.innerHTML = html;
 
-  document.getElementById('pageInfo').textContent = `${CUR_PAGE} / ${totalPages}`;
-  document.getElementById('btnPrev').disabled = (CUR_PAGE <= 1);
-  document.getElementById('btnNext').disabled = (CUR_PAGE >= totalPages);
+  const info = document.getElementById('pageInfo');
+  const prev = document.getElementById('btnPrev');
+  const next = document.getElementById('btnNext');
+  if (info) info.textContent = `${CUR_PAGE} / ${totalPages}`;
+  if (prev) prev.disabled = (CUR_PAGE <= 1);
+  if (next) next.disabled = (CUR_PAGE >= totalPages);
 }
 
 function mudarPagina(delta){
@@ -1085,9 +1220,12 @@ function carregarConsultas(filtro){
     })
     .catch(() => {
       if (box) box.innerHTML = '<div class="hint">Erro ao carregar consultas.</div>';
-      document.getElementById('pageInfo').textContent = '0 / 0';
-      document.getElementById('btnPrev').disabled = true;
-      document.getElementById('btnNext').disabled = true;
+      const info = document.getElementById('pageInfo');
+      const prev = document.getElementById('btnPrev');
+      const next = document.getElementById('btnNext');
+      if (info) info.textContent = '0 / 0';
+      if (prev) prev.disabled = true;
+      if (next) next.disabled = true;
     });
 }
 
@@ -1106,14 +1244,14 @@ function atualizarConsulta(agendamentoId, novoStatus){
     .catch(()=> alert('Erro de rede.'));
 }
 
-/* ==========================================================
-   PRESCRIÇÃO DE EXAMES (SHEET)
-   ========================================================== */
+/* =========================================================
+   PRESCRIÇÃO DE EXAMES (SHEET) + TUSS RÁPIDO
+   ========================================================= */
 
-const sheet = document.getElementById('sheet-prescricao');
+const sheet     = document.getElementById('sheet-prescricao');
 const contextEl = document.getElementById('sheet-context');
 const itensBody = document.getElementById('itensBody');
-const acList = document.getElementById('acList');
+const acList    = document.getElementById('acList');
 
 let RX = {
   agendamento_id: 0,
@@ -1126,20 +1264,29 @@ let RX = {
 
 function abrirSheet(agendamento_id, cliente_id, paciente, dataISO, hora){
   RX = { agendamento_id, cliente_id, paciente, data: dataISO, hora: hora, itens: [] };
-  contextEl.textContent = `${paciente} • ${dataISO ? dataISO.split('-').reverse().join('/') : ''} ${hora?('às '+hora):''}`;
+  if (contextEl) {
+    contextEl.textContent = `${paciente} • ${dataISO ? dataISO.split('-').reverse().join('/') : ''} ${hora?('às '+hora):''}`;
+  }
   renderItens();
-  sheet.classList.add('show');
-  sheet.setAttribute('aria-hidden', 'false');
-  document.getElementById('tussBusca').value = '';
-  document.getElementById('tussBusca').focus();
+  if (sheet) {
+    sheet.classList.add('show');
+    sheet.setAttribute('aria-hidden', 'false');
+  }
+  const buss = document.getElementById('tussBusca');
+  if (buss) {
+    buss.value = '';
+    buss.focus();
+  }
 }
 
 function fecharSheet(){
+  if (!sheet) return;
   sheet.classList.remove('show');
   sheet.setAttribute('aria-hidden', 'true');
 }
 
 function renderItens(){
+  if (!itensBody) return;
   if (!RX.itens.length){
     itensBody.innerHTML = `<tr><td colspan="7" class="muted">Nenhum item ainda.</td></tr>`;
     return;
@@ -1159,7 +1306,7 @@ function renderItens(){
       <td><input type="date" value="${it.data_sugerida||''}" onchange="editItem(${idx}, 'data_sugerida', this.value)"></td>
       <td><input type="text" value="${it.observacoes||''}" oninput="editItem(${idx}, 'observacoes', this.value)"></td>
       <td class="row-actions">
-        <button class="btn" onclick="remItem(${idx})">Remover</button>
+        <button class="btn" type="button" onclick="remItem(${idx})">Remover</button>
       </td>
     </tr>
   `).join('');
@@ -1174,6 +1321,37 @@ function remItem(idx){
   renderItens();
 }
 
+/* ========== QUICK TUSS / EXAMES RÁPIDOS ========== */
+
+const TUSS_QUICK = [
+  { codigo: "20103017", nome: "Hemograma completo" },
+  { codigo: "40801093", nome: "Exame de Urina (EAS)" },
+  { codigo: "40303012", nome: "Raio-X Tórax PA" },
+  { codigo: "40303021", nome: "Raio-X Coluna" },
+  { codigo: "40402017", nome: "Ultrassom Abdômen Total" },
+  { codigo: "40808014", nome: "Eletrocardiograma (ECG)" },
+  { codigo: "40808022", nome: "Teste Ergométrico" },
+  { codigo: "40203015", nome: "Tomografia de Crânio" }
+];
+
+function renderQuickButtons() {
+  const box = document.getElementById("quick-exames");
+  if (!box) return;
+
+  box.innerHTML = TUSS_QUICK.map(e => `
+    <button class="btn soft" type="button" onclick='addItemQuick(${JSON.stringify(e).replace(/'/g,"&#39;")})'>
+      <i class="fa-solid fa-plus"></i> ${e.nome}
+    </button>
+  `).join('');
+}
+
+function addItemQuick(e){
+  addItem({
+    codigo: e.codigo,
+    descricao: e.nome
+  });
+}
+
 function addItem(obj){
   RX.itens.push({
     tuss_codigo: obj.codigo || '',
@@ -1184,6 +1362,9 @@ function addItem(obj){
     observacoes: ''
   });
   renderItens();
+  if (window.showToast) {
+    showToast('Exame adicionado!', 'success');
+  }
 }
 
 function adicionarItemManual(){
@@ -1195,41 +1376,62 @@ function adicionarItemManual(){
   document.getElementById('manDesc').value='';
 }
 
-// Autocomplete TUSS
+/* ========== AUTOCOMPLETE TUSS COM DESTAQUE ========== */
+
 let tussDeb;
+function highlight(str, q) {
+  if (!q) return str;
+  const reg = new RegExp("(" + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ")", "ig");
+  return String(str).replace(reg, "<mark>$1</mark>");
+}
+
 function buscarTuss(q){
   clearTimeout(tussDeb);
-  if (!q){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+  if (!q){
+    acList.classList.remove('show');
+    acList.innerHTML = '';
+    return;
+  }
   tussDeb = setTimeout(()=>{
     fetch(SELF_URL + '?action=buscar_tuss&q=' + encodeURIComponent(q))
       .then(r=>r.json())
       .then(j=>{
-        if (!j.ok){ acList.classList.remove('show'); return; }
-        if (!j.items || !j.items.length){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+        if (!j.ok){
+          acList.classList.remove('show');
+          return;
+        }
+        if (!j.items || !j.items.length){
+          acList.innerHTML = '<div class="ac-empty">Nenhum exame encontrado.</div>';
+          acList.classList.add('show');
+          return;
+        }
         acList.innerHTML = j.items.map(it=>`
           <div class="ac-item" onclick='selTuss(${JSON.stringify(it).replace(/'/g,"&#39;")})'>
-            <b>${it.codigo}</b> — ${it.descricao}
+            <div class="ac-code">${it.codigo}</div>
+            <div class="ac-desc">${highlight(it.descricao, q)}</div>
           </div>
         `).join('');
         acList.classList.add('show');
       })
       .catch(()=>{ acList.classList.remove('show'); });
-  }, 250);
+  }, 200);
 }
 
 function selTuss(it){
   acList.classList.remove('show');
   addItem({codigo: it.codigo, descricao: it.descricao});
-  document.getElementById('tussBusca').value = '';
+  const buss = document.getElementById('tussBusca');
+  if (buss) buss.value = '';
 }
 
-// Salvar prescrição
+/* ========== SALVAR PRESCRIÇÃO ========== */
+
 function salvarPrescricao(){
   if (!RX.agendamento_id){ alert('Agendamento inválido.'); return; }
   if (!RX.itens.length){ alert('Adicione ao menos um exame.'); return; }
 
   const btn = document.getElementById('btnSalvarExames');
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
 
   fetch(SELF_URL + '?action=prescrever_exames', {
     method: 'POST',
@@ -1241,17 +1443,459 @@ function salvarPrescricao(){
   })
   .then(r=>r.json())
   .then(j=>{
-    btn.disabled = false;
-    alert(j.msg || (j.ok?'Exames salvos.':'Falha ao salvar.'));
-    if (j.ok){ fecharSheet(); }
+    if (btn) btn.disabled = false;
+    if (j.ok){
+      alert(j.msg || 'Exames salvos.');
+      fecharSheet();
+    } else {
+      alert(j.msg || 'Falha ao salvar.');
+    }
   })
   .catch(()=>{
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
     alert('Erro de rede.');
   });
 }
 
-// Init
+/* =========================================================
+   TOAST / CARDS DE MENSAGEM (substitui alert())
+   ========================================================= */
+(function () {
+  const css = `
+  .toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .toast {
+    min-width: 260px;
+    max-width: 380px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+    padding: 10px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border-left: 4px solid #0ea5e9;
+    pointer-events: auto;
+    animation: toast-in .18s ease-out;
+  }
+  .toast-success { border-left-color: #22c55e; }
+  .toast-error   { border-left-color: #ef4444; }
+  .toast-info    { border-left-color: #0ea5e9; }
+
+  .toast-icon {
+    margin-top: 2px;
+    font-size: 16px;
+  }
+  .toast-body {
+    flex: 1;
+    font-size: 14px;
+    color: #111827;
+  }
+  .toast-close {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.6;
+  }
+  .toast-close:hover {
+    opacity: 1;
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(-6px) translateX(6px); }
+    to   { opacity: 1; transform: translateY(0) translateX(0); }
+  }
+
+  .quick-box {
+    margin: 12px 0 18px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f9fafb;
+  }
+  .quick-box h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+  }
+  .quick-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .quick-grid .btn.soft {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .quick-grid .btn.soft:hover {
+    background: #e0e7ff;
+  }
+
+  .ac-item {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+  }
+  .ac-item:hover {
+    background: #f1f5f9;
+  }
+  .ac-code {
+    font-weight: 700;
+    color: #1e3a8a;
+  }
+  .ac-desc {
+    font-size: 13px;
+    color: #374151;
+  }
+  .ac-empty {
+    padding: 10px;
+    text-align: center;
+    color: #6b7280;
+  }
+  `;
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  let container = null;
+  function getContainer() {
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  window.showToast = function (message, type = 'info') {
+    const wrap = getContainer();
+
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+
+    const icon = document.createElement('div');
+    icon.className = 'toast-icon';
+    icon.innerHTML =
+      type === 'success' ? '✔' :
+      type === 'error'   ? '✖' :
+                           'ℹ';
+
+    const body = document.createElement('div');
+    body.className = 'toast-body';
+    body.textContent = message;
+
+    const btnClose = document.createElement('button');
+    btnClose.className = 'toast-close';
+    btnClose.type = 'button';
+    btnClose.innerHTML = '&times;';
+    btnClose.onclick = () => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    };
+
+    el.appendChild(icon);
+    el.appendChild(body);
+    el.appendChild(btnClose);
+
+    wrap.appendChild(el);
+
+    setTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 4000);
+  };
+
+  const originalAlert = window.alert;
+  window.alert = function (msg) {
+    try {
+      const text = String(msg || '');
+      let tipo = 'info';
+      if (/erro|falha|inválid/i.test(text)) tipo = 'error';
+      else if (/conclu|salv|sucesso|bloquead/i.test(text)) tipo = 'success';
+
+      showToast(text, tipo);
+    } catch (e) {
+      originalAlert(msg);
+    }
+  };
+})();
+
+/* =========================================================
+   CHAT MÉDICO ⇆ PACIENTE (usa chat_api_medico.php)
+   Lista lateral estilo WhatsApp
+   ========================================================= */
+const CHAT_API_URL = 'chat_api_medico.php';
+const MEDICO_ID    = <?= (int)$id ?>;
+
+let CHAT_CONVERSA_ID   = null;
+let CHAT_ULTIMO_ID     = 0;
+let CHAT_TIMER         = null;
+
+/* Pequeno helper pra escapar HTML */
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* ================== LISTA DE CONVERSAS (ESQUERDA) ================== */
+function carregarListaConversas() {
+  const box = document.getElementById('chat-conversas-list');
+  if (!box) return;
+
+  box.innerHTML = '<div class="chat-empty">Carregando conversas...</div>';
+
+  const url = `${CHAT_API_URL}?action=listar_conversas&medico_id=${encodeURIComponent(MEDICO_ID)}`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(j => {
+      if (!j || !j.ok) {
+        box.innerHTML = '<div class="chat-empty">Erro ao carregar conversas.</div>';
+        return;
+      }
+
+      const itens = j.items || [];
+      if (!itens.length) {
+        box.innerHTML = '<div class="chat-empty">Nenhuma conversa ainda.</div>';
+        CHAT_LIST_CARREGADA = true;
+        return;
+      }
+
+      box.innerHTML = itens.map(montarContatoHTML).join('');
+      CHAT_LIST_CARREGADA = true;
+    })
+    .catch(() => {
+      box.innerHTML = '<div class="chat-empty">Erro de rede ao carregar conversas.</div>';
+    });
+}
+
+function montarContatoHTML(c) {
+  const nome = escapeHtml(c.cliente_nome || ('Paciente ' + c.cliente_id));
+  const preview = escapeHtml(c.ultima_msg || '');
+  const hora = (c.ultima_data || '').slice(11, 16); // HH:MM
+  const foto = c.foto_cliente && c.foto_cliente !== ''
+    ? escapeHtml(c.foto_cliente)
+    : 'img/default.jpg';
+
+  const convId = c.conversa_id ? Number(c.conversa_id) : '';
+
+  return `
+    <div class="chat-contact"
+         data-conversa="${convId}"
+         data-cliente="${c.cliente_id}"
+         data-nome="${nome}"
+         onclick="selecionarConversa(this)">
+      <div class="chat-avatar">
+        <img src="${foto}" alt="${nome}">
+      </div>
+      <div class="chat-contact-text">
+        <div class="chat-contact-top">
+          <span class="chat-contact-name">${nome}</span>
+          <span class="chat-contact-time">${hora || ''}</span>
+        </div>
+        <div class="chat-contact-last">${preview}</div>
+      </div>
+    </div>
+  `;
+}
+
+function selecionarConversa(el) {
+  document.querySelectorAll('.chat-contact').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+
+  const nome       = el.dataset.nome || ('Paciente ' + el.dataset.cliente);
+  const clienteId  = parseInt(el.dataset.cliente, 10);
+  let   conversaId = parseInt(el.dataset.conversa || '0', 10);
+
+  document.getElementById('chat-header-title').textContent = nome;
+  document.getElementById('chat-header-sub').textContent   =
+    'Paciente ID ' + (clienteId || '');
+
+  const avatar = document.getElementById('chat-header-avatar');
+  if (avatar) {
+    const iniciais = nome.trim().split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+    avatar.textContent = iniciais || '?';
+  }
+
+  const boxMsg = document.getElementById('chat-mensagens');
+  if (boxMsg) boxMsg.innerHTML = '';
+
+  if (!conversaId) {
+    const fd = new URLSearchParams();
+    fd.append('action', 'obter_ou_criar_conversa');
+    fd.append('cliente_id', clienteId);
+    fd.append('medico_id', MEDICO_ID);
+
+    fetch(CHAT_API_URL, {
+      method: 'POST',
+      body: fd
+    })
+      .then(r => r.json())
+      .then(j => {
+        if (!j || !j.ok || !j.conversa_id) {
+          appendMsg('sistema', j?.msg || 'Não foi possível iniciar o chat com este paciente.');
+          return;
+        }
+
+        conversaId = parseInt(j.conversa_id, 10);
+        el.dataset.conversa = conversaId;
+
+        CHAT_CONVERSA_ID = conversaId;
+        CHAT_ULTIMO_ID   = 0;
+
+        carregarMensagensChat(true);
+
+        if (CHAT_TIMER) clearInterval(CHAT_TIMER);
+        CHAT_TIMER = setInterval(() => carregarMensagensChat(false), 3000);
+      })
+      .catch(() => {
+        appendMsg('sistema', 'Erro de rede ao iniciar conversa.');
+      });
+
+  } else {
+    CHAT_CONVERSA_ID = conversaId;
+    CHAT_ULTIMO_ID   = 0;
+
+    carregarMensagensChat(true);
+
+    if (CHAT_TIMER) clearInterval(CHAT_TIMER);
+    CHAT_TIMER = setInterval(() => carregarMensagensChat(false), 3000);
+  }
+}
+
+/* ================== MENSAGENS DA CONVERSA ================== */
+
+function appendMsg(tipo, texto, horario) {
+  const box = document.getElementById('chat-mensagens');
+  if (!box) return;
+
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (
+    tipo === 'me' ? 'chat-me' :
+    tipo === 'ele' ? 'chat-outro' :
+                     'chat-sistema'
+  );
+
+  const span = document.createElement('span');
+  span.className = 'chat-texto';
+  span.textContent = texto;
+  div.appendChild(span);
+
+  if (horario) {
+    const small = document.createElement('small');
+    small.className = 'chat-hora';
+    small.textContent = horario;
+    div.appendChild(small);
+  }
+
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function carregarMensagensChat(primeiraVez) {
+  if (!CHAT_CONVERSA_ID) return;
+
+  const url = `${CHAT_API_URL}?action=listar_mensagens&conversa_id=${encodeURIComponent(CHAT_CONVERSA_ID)}&ultimo_id=${encodeURIComponent(CHAT_ULTIMO_ID)}`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(j => {
+      if (!j || !j.ok) {
+        if (primeiraVez) {
+          appendMsg('sistema', j?.msg || 'Erro ao carregar mensagens.');
+        }
+        return;
+      }
+
+      const itens = j.items || [];
+      if (!itens.length && primeiraVez) {
+        appendMsg('sistema', 'Nenhuma mensagem ainda. Envie a primeira.');
+        return;
+      }
+
+      itens.forEach(m => {
+        const idNum = parseInt(m.id, 10) || 0;
+        if (idNum > CHAT_ULTIMO_ID) CHAT_ULTIMO_ID = idNum;
+
+        const meu   = (m.remetente_tipo === 'medico');
+        const tipo  = meu ? 'me' : 'ele';
+        const hora  = (m.enviado_em || '').slice(11, 16);
+        appendMsg(tipo, m.mensagem || '', hora);
+      });
+    })
+    .catch(() => {
+      if (primeiraVez) {
+        appendMsg('sistema', 'Erro de rede ao carregar mensagens.');
+      }
+    });
+}
+
+/* ================== ENVIAR MENSAGEM ================== */
+
+function enviarMsgChat() {
+  if (!CHAT_CONVERSA_ID) {
+    alert('Selecione uma conversa primeiro.');
+    return;
+  }
+
+  const inp = document.getElementById('chat_texto');
+  if (!inp) return;
+
+  const txt = (inp.value || '').trim();
+  if (!txt) return;
+
+  const fd = new URLSearchParams();
+  fd.append('action', 'enviar_mensagem');
+  fd.append('conversa_id', CHAT_CONVERSA_ID);
+  fd.append('mensagem', txt);
+
+  const textoLocal = txt;
+  inp.value = '';
+
+  fetch(CHAT_API_URL, {
+    method: 'POST',
+    body: fd
+  })
+    .then(r => r.json())
+    .then(j => {
+      if (!j || !j.ok) {
+        alert(j?.msg || 'Erro ao enviar mensagem.');
+        return;
+      }
+      appendMsg('me', textoLocal, new Date().toTimeString().slice(0, 5));
+      CHAT_ULTIMO_ID = Math.max(CHAT_ULTIMO_ID, j.id || CHAT_ULTIMO_ID);
+    })
+    .catch(() => {
+      alert('Erro de rede ao enviar mensagem.');
+    });
+}
+
+/* ================== INFO PANE ================== */
+function toggleChatInfo() {
+  const panel = document.getElementById('chat-info-panel');
+  if (!panel) return;
+  panel.classList.toggle('show');
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
 window.addEventListener('DOMContentLoaded', () => {
   const bio = document.getElementById('bio');
   if (bio) { 
@@ -1262,6 +1906,7 @@ window.addEventListener('DOMContentLoaded', () => {
   renderizarCalendario();
   desenharListaHorarios();
   mudarModoSelecao('unico');
+  renderQuickButtons();
 
   if (new URLSearchParams(location.search).get('salvo') === '1') {
     console.log('Perfil salvo com sucesso!');
@@ -1269,5 +1914,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+
 </body>
-</html>
+</html> 

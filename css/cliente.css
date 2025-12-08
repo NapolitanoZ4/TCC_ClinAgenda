@@ -562,7 +562,7 @@ body::before {
 .badge.atrasado{ background:#ffe4e1; border-color:#ffc6c1; color:#a6251d; }
 .badge.neutro{ background:#eef1f4; border-color:#dfe5ea; color:#556270; }
 
-/* ============================================================
+/* =========================================================
    ========== CALENDÁRIO E HORÁRIOS (CLIENTE) =====
    ============================================================ */
 
@@ -724,8 +724,8 @@ body::before {
 .lista-exames{
   display:grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap:16px;
-  margin-top:8px;
+  gap:18px;
+  margin-top:10px;
 }
 @media (max-width: 1200px){
   .lista-consultas,
@@ -748,33 +748,130 @@ body::before {
 
 .card-exame,
 .card-consulta{
-  background:#fff;
-  border-radius:12px;
-  padding:10px 12px;
+  position: relative;
+  background: radial-gradient(circle at top left, var(--brand-05) 0, #ffffff 55%);
+  border-radius: 16px;
+  padding: 14px 16px;
   display:flex;
   align-items:flex-start;
   justify-content:space-between;
-  gap:10px;
-  box-shadow:0 4px 12px rgba(15,118,110,.06);
-  min-height: 90px;
+  gap:12px;
+  box-shadow: 0 10px 26px rgba(15,118,110,.10);
+  min-height: 110px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  overflow: hidden;
+  transition:
+    transform 0.18s ease-out,
+    box-shadow 0.18s ease-out,
+    border-color 0.18s ease-out,
+    background 0.18s ease-out;
 }
+
+/* barrinha superior de destaque */
+.card-exame::before,
+.card-consulta::before{
+  content:"";
+  position:absolute;
+  top:0; left:0;
+  width:100%;
+  height:4px;
+  background: linear-gradient(90deg, #22c55e, #16a34a, #22c55e);
+  opacity:0.85;
+}
+
+/* brilho/efeito no canto direito */
+.card-exame::after,
+.card-consulta::after{
+  content:"";
+  position:absolute;
+  right:-40px;
+  top:-40px;
+  width:130px;
+  height:130px;
+  background: radial-gradient(circle, rgba(34,197,94,0.12), transparent 65%);
+  pointer-events:none;
+}
+
+/* hover mais “vivo” */
+.card-exame:hover,
+.card-consulta:hover{
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(15,118,110,.20);
+  border-color: var(--brand-30);
+  background: radial-gradient(circle at top left, var(--brand-10) 0, #ffffff 60%);
+}
+
+/* Ícones dos cards */
 .card-exame .icon,
 .card-consulta .icon{
-  width:40px; height:40px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
+  width:46px;
+  height:46px;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  font-size:20px;
+  box-shadow: 0 6px 16px rgba(15,23,42,.18);
 }
+
+/* cores específicas */
 .card-exame .icon{
-  background:#e0f2fe; color:#1d4ed8;
+  background: linear-gradient(135deg, #e0f2fe, #bfdbfe);
+  color:#1d4ed8;
 }
 .card-consulta .icon{
-  background:#dcfce7; color:#166534;
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color:#166534;
 }
+
+/* área de texto */
 .card-consulta .info,
-.card-exame .info{ flex:1; }
+.card-exame .info{
+  flex:1;
+  min-width:0;
+}
+
 .card-consulta .info strong,
-.card-exame .info strong{ display:block; margin-bottom:2px; }
+.card-exame .info strong{
+  display:block;
+  margin-bottom:4px;
+  font-size:14px;
+  color:#0f172a;
+}
+
+/* linhas de detalhes */
 .card-consulta .info .sub,
-.card-exame .info .sub{ font-size:12px; color:#6b7280; display:block; margin-top:2px; }
+.card-exame .info .sub{
+  font-size:12px;
+  color:#6b7280;
+  display:block;
+  margin-top:2px;
+  line-height:1.35;
+}
+.card-consulta .info .sub i,
+.card-exame .info .sub i{
+  margin-right:4px;
+  opacity:.9;
+}
+
+/* coluna direita (badge) */
+.card-consulta > div:last-child,
+.card-exame > div:last-child{
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-end;
+}
+
+/* badge já existe, só dou um ajuste suave */
+.badge{
+  font-size:12px;
+  font-weight:700;
+  padding:6px 11px;
+  border-radius:999px;
+  border:1px solid transparent;
+  white-space:nowrap;
+}
 
 /* Tabela de médicos na seção Médicos */
 .tabela-medicos{
@@ -860,4 +957,478 @@ body::before {
   color:#b91c1c;
   border-radius:8px;
   font-size:13px;
+}
+
+/* =========================================================
+   WIDGET CLINAGENDA – CHAT + NOTIFICAÇÕES (verde e branco)
+   ========================================================= */
+
+/* Botão flutuante (bolinha "💬") */
+#ca-chat-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 16px 40px rgba(22, 163, 74, 0.45);
+  z-index: 999;
+  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out,
+              background 0.18s ease-out;
+}
+
+#ca-chat-fab:hover {
+  transform: translateY(-2px);
+  background: #16a34a;
+  box-shadow: 0 20px 50px rgba(22, 163, 74, 0.55);
+}
+
+/* Overlay escuro por trás do card */
+#ca-chat-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 998;
+}
+
+.ca-hidden {
+  display: none !important;
+}
+
+/* Backdrop (caso queira clicar fora depois) */
+#ca-chat-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+/* Card principal */
+#ca-chat-card {
+  position: relative;
+  z-index: 999;
+  width: min(920px, 100% - 32px);
+  height: 540px;
+  background: #f0fdf4;              /* verde MUITO claro */
+  border-radius: 24px;
+  box-shadow: 0 22px 60px rgba(15, 118, 110, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Cabeçalho com abas */
+.ca-chat-header {
+  height: 56px;
+  background: #059669;              /* verde topo */
+  color: #ecfdf5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+}
+
+.ca-chat-tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ca-tab {
+  border: none;
+  background: transparent;
+  color: #bbf7d0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s ease-out, color 0.18s ease-out;
+}
+
+.ca-tab-active {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+#ca-chat-close {
+  border: none;
+  background: transparent;
+  color: #ecfdf5;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Corpo geral */
+.ca-chat-body {
+  flex: 1;
+  background: #e5f9ef;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;              /* permite o scroll interno funcionar */
+}
+
+/* Cada aba (notificações / chat) */
+.ca-tab-pane {
+  display: none;
+  height: 100%;
+}
+
+.ca-tab-pane-active {
+  display: block;
+}
+
+/* ---------- NOTIFICAÇÕES ---------- */
+
+#ca-tab-notificacoes {
+  padding: 16px;
+}
+
+.ca-list {
+  height: 100%;
+  background: #f9fafb;
+  border-radius: 18px;
+  padding: 8px 12px;
+  overflow-y: auto;
+  box-shadow: inset 0 0 0 1px rgba(209, 250, 229, 0.8);
+}
+
+.ca-empty {
+  font-size: 13px;
+  color: #6b7280;
+  padding: 16px;
+  text-align: center;
+}
+
+.ca-notif-item {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-left: 4px solid #22c55e;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.ca-notif-item.lida {
+  opacity: 0.7;
+  border-left-color: #a7f3d0;
+}
+
+.ca-notif-tipo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #059669;
+  margin-bottom: 4px;
+}
+
+.ca-notif-msg {
+  font-size: 13px;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.ca-notif-data {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: right;
+}
+
+/* ---------- CHAT (lista de médicos + conversa) ---------- */
+
+#ca-tab-chat {
+  height: 100%;
+}
+
+#ca-chat-main {
+  display: flex;
+  height: 100%;
+  min-height: 0;          /* IMPORTANTE p/ scroll funcionar */
+}
+
+/* Sidebar de conversas (lado esquerdo) */
+.ca-chat-sidebar {
+  width: 270px;
+  background: #ecfdf3;
+  border-right: 1px solid #d1fae5;
+  display: flex;
+  flex-direction: column;
+}
+
+.ca-chat-sidebar-header {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #047857;
+  border-bottom: 1px solid #d1fae5;
+}
+
+.ca-chat-contatos {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 6px 10px;
+}
+
+/* Cada contato da lista */
+.ca-chat-contact {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: background 0.16s ease-out, box-shadow 0.16s ease-out;
+}
+
+.ca-chat-contact:hover {
+  background: #dcfce7;
+}
+
+.ca-chat-contact.active {
+  background: #22c55e;
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.35);
+}
+
+.ca-chat-contact.active .ca-chat-contact-name,
+.ca-chat-contact.active .ca-chat-contact-last,
+.ca-chat-contact.active .ca-chat-contact-time,
+.ca-chat-contact.active .ca-chat-contact-esp {
+  color: #ecfdf5;
+}
+
+/* Avatar do médico (foto ou iniciais) */
+.ca-chat-contact-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #bbf7d0;
+  color: #047857;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ca-chat-contact-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Texto da linha do contato */
+.ca-chat-contact-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ca-chat-contact-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ca-chat-contact-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #064e3b;
+}
+
+.ca-chat-contact-time {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.ca-chat-contact-last {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #4b5563;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ca-chat-contact-esp {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #10b981;
+}
+
+/* Painel da conversa (lado direito) */
+.ca-chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+  min-height: 0;          /* permite a área de mensagens encolher */
+}
+
+/* Header da conversa */
+.ca-chat-conversa-header {
+  height: 60px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ecfdf5;
+}
+
+.ca-chat-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #ecfdf5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ca-chat-titles {
+  display: flex;
+  flex-direction: column;
+}
+
+#ca-chat-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #064e3b;
+}
+
+#ca-chat-sub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Área de mensagens */
+.ca-chat-messages {
+  flex: 1;
+  padding: 14px 16px;
+  background: #e5f9ef;
+  overflow-y: auto;                /* barra de rolagem interna */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;                   /* ajuda a não estourar o layout */
+}
+
+/* Bolhas de mensagem – AJUSTADAS */
+.ca-msg {
+  max-width: 72%;
+  border-radius: 18px;
+  padding: 9px 13px 6px;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  position: relative;
+  display: block;          /* cada bolha vira um bloco na coluna */
+}
+
+/* Mensagens do PACIENTE (você) – direita, verde */
+.ca-msg.me {
+  align-self: flex-end;    /* alinha no lado direito do flex-column */
+  margin-left: auto;       /* encosta na direita */
+  background: #22c55e;
+  color: #f9fafb;
+  border-bottom-right-radius: 4px;
+  text-align: left;
+}
+
+/* Mensagens do MÉDICO – esquerda, brancas */
+.ca-msg.them {
+  align-self: flex-start;  /* lado esquerdo */
+  margin-right: auto;      /* encosta na esquerda */
+  background: #ffffff;
+  color: #111827;
+  border-bottom-left-radius: 4px;
+  text-align: left;
+}
+
+.ca-msg-time {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-top: 4px;
+  text-align: right;
+}
+
+/* Input de envio */
+.ca-chat-input {
+  padding: 8px 10px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#ca-chat-text {
+  flex: 1;
+  resize: none;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 8px 14px;
+  font-size: 13px;
+  outline: none;
+  background: #ffffff;
+}
+
+#ca-chat-text:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px #bbf7d0;
+}
+
+#ca-chat-send {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #22c55e;
+  color: #f0fdf4;
+  cursor: pointer;
+  transition: background 0.16s ease-out, transform 0.12s ease-out,
+              box-shadow 0.16s ease-out;
+}
+
+#ca-chat-send:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+
+#ca-chat-send:not(:disabled):hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(22, 163, 74, 0.4);
+}
+
+/* Scrollbars discretos nas listas */
+.ca-chat-contatos::-webkit-scrollbar,
+.ca-chat-messages::-webkit-scrollbar,
+.ca-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ca-chat-contatos::-webkit-scrollbar-thumb,
+.ca-chat-messages::-webkit-scrollbar-thumb,
+.ca-list::-webkit-scrollbar-thumb {
+  background: #a7f3d0;
+  border-radius: 999px;
 }

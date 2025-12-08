@@ -1,4 +1,4 @@
-<?php
+<?php 
 session_start();
 date_default_timezone_set('America/Sao_Paulo');
 
@@ -33,12 +33,12 @@ if (($_GET['action'] ?? '') === 'slots') {
     echo json_encode(['ok'=>false,'msg'=>'Parâmetros inválidos']); exit;
   }
 
-  // slots base (06:00..10:40 e 13:00..17:40, passos de 40min, pausa almoço 11h–12:59)
+  // slots base (08:00..10:40 e 13:00..17:40, passos de 40min, pausa almoço 11h–12:59)
   $slots_padrao = function(){
     $out = [];
 
-    // Manhã 06:00 até 10:40
-    for ($m = 6*60; $m <= (11*60 - 20); $m += 40) {
+    // Manhã 08:00 até 10:40
+    for ($m = 8*60; $m <= (11*60 - 20); $m += 40) {
       $out[] = sprintf('%02d:%02d', intdiv($m,60), $m%60);
     }
 
@@ -56,7 +56,7 @@ if (($_GET['action'] ?? '') === 'slots') {
   $q1->execute();
   $ag = array_map(fn($t)=>substr($t[0],0,5), $q1->get_result()->fetch_all(MYSQLI_NUM));
 
-  // bloqueados
+  // bloqueados (ocupado = 1)
   $q2 = $conn->prepare("SELECT horario FROM horarios_disponiveis WHERE medico_id=? AND data=? AND ocupado=1");
   $q2->bind_param('is', $medico_id, $data);
   $q2->execute();
@@ -79,52 +79,145 @@ if (($_GET['action'] ?? '') === 'slots') {
 if (($_POST['action'] ?? '') === 'agendar') {
   header('Content-Type: application/json; charset=utf-8');
 
-  if (!isset($_SESSION['id'])) { echo json_encode(['ok'=>false,'msg'=>'Faça login.']); exit; }
+  if (!isset($_SESSION['id'])) { 
+    echo json_encode(['ok'=>false,'msg'=>'Faça login.']); 
+    exit; 
+  }
+
   $cliente_id = (int)$_SESSION['id'];
   $medico_id  = (int)($_POST['medico_id'] ?? 0);
   $data       = $_POST['data'] ?? '';
   $horario    = $_POST['horario'] ?? '';
 
-  if (!$medico_id || !preg_match('/^\d{4}-\d{2}-\d{2}$/',$data) || !preg_match('/^\d{2}:\d{2}$/',$horario)) {
-    echo json_encode(['ok'=>false,'msg'=>'Parâmetros inválidos']); exit;
+  if (
+    !$medico_id ||
+    !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data) ||
+    !preg_match('/^\d{2}:\d{2}$/', $horario)
+  ) {
+    echo json_encode(['ok'=>false,'msg'=>'Parâmetros inválidos']); 
+    exit;
   }
+
   $horario .= ':00';
 
-  $dtSel = DateTime::createFromFormat('Y-m-d H:i:s', "$data $horario", new DateTimeZone('America/Sao_Paulo'));
+  $dtSel = DateTime::createFromFormat(
+    'Y-m-d H:i:s', 
+    "$data $horario", 
+    new DateTimeZone('America/Sao_Paulo')
+  );
+
   if (!$dtSel || $dtSel < new DateTime('now', new DateTimeZone('America/Sao_Paulo'))) {
-    echo json_encode(['ok'=>false,'msg'=>'Esse horário já passou.']); exit;
+    echo json_encode(['ok'=>false,'msg'=>'Esse horário já passou.']); 
+    exit;
   }
 
   $conn->begin_transaction();
+
   try {
     // 1) bloqueado?
-    $q1 = $conn->prepare("SELECT 1 FROM horarios_disponiveis WHERE medico_id=? AND data=? AND horario=? AND ocupado=1 LIMIT 1");
+    $q1 = $conn->prepare("
+      SELECT 1 
+      FROM horarios_disponiveis 
+      WHERE medico_id=? AND data=? AND horario=? AND ocupado=1 
+      LIMIT 1
+    ");
     $q1->bind_param('iss', $medico_id, $data, $horario);
     $q1->execute();
-    if ($q1->get_result()->num_rows) throw new Exception('Horário bloqueado pelo médico.');
+    if ($q1->get_result()->num_rows) {
+      throw new Exception('Horário bloqueado pelo médico.');
+    }
 
     // 2) já ocupado?
-    $q2 = $conn->prepare("SELECT 1 FROM agendamentos WHERE medico_id=? AND data=? AND horario=? AND status IN ('pendente','confirmado') LIMIT 1");
+    $q2 = $conn->prepare("
+      SELECT 1 
+      FROM agendamentos 
+      WHERE medico_id=? AND data=? AND horario=? 
+        AND status IN ('pendente','confirmado') 
+      LIMIT 1
+    ");
     $q2->bind_param('iss', $medico_id, $data, $horario);
     $q2->execute();
-    if ($q2->get_result()->num_rows) throw new Exception('Esse horário acabou de ser ocupado.');
+    if ($q2->get_result()->num_rows) {
+      throw new Exception('Esse horário acabou de ser ocupado.');
+    }
 
-    // 3) inserir
-    $ins = $conn->prepare("INSERT INTO agendamentos (medico_id, cliente_id, data, horario, status) VALUES (?, ?, ?, ?, 'pendente')");
+    // 3) inserir agendamento
+    $ins = $conn->prepare("
+      INSERT INTO agendamentos (medico_id, cliente_id, data, horario, status) 
+      VALUES (?, ?, ?, ?, 'pendente')
+    ");
     $ins->bind_param('iiss', $medico_id, $cliente_id, $data, $horario);
     $ins->execute();
+    $agendamento_id = (int)$ins->insert_id;
+
+    /* ===== BUSCAR NOMES (pra mensagem ficar bonita) ===== */
+    // Nome do cliente
+    $nomeCliente = 'Paciente';
+    if ($stCli = $conn->prepare("SELECT nome FROM clientes WHERE id = ?")) {
+      $stCli->bind_param('i', $cliente_id);
+      $stCli->execute();
+      $rCli = $stCli->get_result()->fetch_assoc();
+      if ($rCli && !empty($rCli['nome'])) {
+        $nomeCliente = $rCli['nome'];
+      }
+      $stCli->close();
+    }
+
+    // Nome do médico
+    $nomeMedico = 'Médico';
+    if ($stMed = $conn->prepare("SELECT nome FROM medicos WHERE id = ?")) {
+      $stMed->bind_param('i', $medico_id);
+      $stMed->execute();
+      $rMed = $stMed->get_result()->fetch_assoc();
+      if ($rMed && !empty($rMed['nome'])) {
+        $nomeMedico = $rMed['nome'];
+      }
+      $stMed->close();
+    }
+
+    $dataBR = date('d/m/Y', strtotime($data));
+    $horaBR = substr($horario, 0, 5);
+
+    /* ===== NOTIFICAÇÃO PARA O MÉDICO ===== */
+    $msgMedico = "Novo agendamento de $nomeCliente em $dataBR às $horaBR.";
+    if ($notif = $conn->prepare("
+      INSERT INTO notificacoes (usuario_tipo, usuario_id, tipo, referencia_id, mensagem)
+      VALUES ('medico', ?, 'agendamento_realizado', ?, ?)
+    ")) {
+      $notif->bind_param('iis', $medico_id, $agendamento_id, $msgMedico);
+      $notif->execute();
+      $notif->close();
+    }
+
+    /* ===== NOTIFICAÇÃO PARA O CLIENTE ===== */
+    $msgCliente = "Seu agendamento com $nomeMedico foi criado para $dataBR às $horaBR (status: pendente).";
+    if ($notif2 = $conn->prepare("
+      INSERT INTO notificacoes (usuario_tipo, usuario_id, tipo, referencia_id, mensagem)
+      VALUES ('cliente', ?, 'agendamento_realizado', ?, ?)
+    ")) {
+      $notif2->bind_param('iis', $cliente_id, $agendamento_id, $msgCliente);
+      $notif2->execute();
+      $notif2->close();
+    }
 
     $conn->commit();
-    echo json_encode(['ok'=>true,'msg'=>'Agendamento criado! Status: pendente (aguardando confirmação do médico).']);
+
+    echo json_encode([
+      'ok'  => true,
+      'msg' => 'Agendamento criado! Status: pendente (aguardando confirmação do médico).'
+    ]);
   } catch (Throwable $e) {
     $conn->rollback();
     $msg = $e->getMessage();
-    $l = strtolower($msg);
-    if (str_contains($l,'duplicate') || str_contains($l,'unique')) $msg = 'Esse horário acabou de ser ocupado. Escolha outro.';
+    $l   = strtolower($msg);
+    if (str_contains($l,'duplicate') || str_contains($l,'unique')) {
+      $msg = 'Esse horário acabou de ser ocupado. Escolha outro.';
+    }
     echo json_encode(['ok'=>false,'msg'=>$msg]);
   }
   exit;
 }
+
 
 /* ==================== CONFIGURAÇÕES (atualizar email/telefone) ==================== */
 $msg_config_ok   = '';
@@ -163,7 +256,8 @@ if ($res && $res->num_rows > 0) {
 }
 
 /* ==================== FOTO DO CLIENTE (tabela 'fotos' + fallback) ==================== */
-$fotoPath = 'img/default.jpg';
+/* Ajuste: usamos a tabela 'fotos'; se não achar nada, cai num padrão em /imagens */
+$fotoPath = 'imagens/cliente-default.png'; // crie esse arquivo se ainda não existir
 $versaoQS = '';
 if ($pf = $conn->prepare("
   SELECT caminho, UNIX_TIMESTAMP(data_upload) AS v
@@ -183,32 +277,6 @@ if ($pf = $conn->prepare("
     }
   }
   $pf->close();
-}
-if ($fotoPath === 'img/default.jpg') {
-  $candidates = [];
-  $baseRel = 'uploads/clientes';
-  $baseAbs = __DIR__ . DIRECTORY_SEPARATOR . $baseRel . DIRECTORY_SEPARATOR;
-  $patterns = [
-    $baseAbs . "cliente_{$id}_*.webp",
-    $baseAbs . "cliente_{$id}_*.jpg",
-    $baseAbs . "cliente_{$id}_*.jpeg",
-    $baseAbs . "cliente_{$id}_*.png",
-    __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . "cliente_{$id}.webp",
-    __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . "cliente_{$id}.jpg",
-    __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . "cliente_{$id}.jpeg",
-    __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . "cliente_{$id}.png",
-  ];
-  foreach ($patterns as $p) {
-    foreach (glob($p) ?: [] as $fileAbs) {
-      $candidates[$fileAbs] = @filemtime($fileAbs) ?: time();
-    }
-  }
-  if ($candidates) {
-    arsort($candidates);
-    $abs = array_key_first($candidates);
-    $fotoPath = str_replace(__DIR__ . DIRECTORY_SEPARATOR, '', $abs);
-    $versaoQS = '?v=' . (int)$candidates[$abs];
-  }
 }
 $fotoSidebar = safe($fotoPath . $versaoQS);
 
@@ -396,6 +464,21 @@ function badge_class($st){
   if ($s==='cancelado')  return 'badge neutro';
   return 'badge neutro';
 }
+
+/* Texto extra para status dos exames (para os cards de Exames) */
+function status_exame_descricao($st){
+  $s = strtolower((string)$st);
+  if ($s === 'pendente') {
+    return 'Exame ainda não realizado. Compareça no dia e horário marcados.';
+  }
+  if ($s === 'realizado') {
+    return 'Exame já realizado. Verifique o resultado com a clínica ou médico.';
+  }
+  if ($s === 'cancelado') {
+    return 'Exame cancelado. Caso necessário, solicite um novo agendamento.';
+  }
+  return 'Status do exame em atualização.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -406,11 +489,63 @@ function badge_class($st){
   <link rel="stylesheet" href="css/cliente.css?v=1">
   <!-- Font Awesome -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+  <!-- Estilos extras só para o widget de chat (lado direito/esquerdo + dia) -->
+  <style>
+    #ca-chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      overflow-y: auto;
+    }
+    .ca-chat-dia {
+      align-self: center;
+      margin: 6px 0;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #d1fae5;
+      color: #047857;
+    }
+    .ca-msg {
+      max-width: 80%;
+      padding: 8px 10px 4px;
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    /* CLIENTE (eu) -> direita, verde mais escuro */
+    .ca-msg.me {
+      align-self: flex-end;
+      background: #16a34a;
+      color: #ecfdf5;
+      border-bottom-right-radius: 4px;
+    }
+    /* MÉDICO -> esquerda, branco */
+    .ca-msg.them {
+      align-self: flex-start;
+      background: #ffffff;
+      color: #111827;
+      border-bottom-left-radius: 4px;
+    }
+    .ca-msg-time {
+      margin-top: 2px;
+      font-size: 10px;
+      opacity: 0.75;
+      text-align: right;
+    }
+  </style>
 </head>
 <body>
 
 <header class="header">
-  <div class="header-logo">
+  <!-- Logo clicável para voltar para HOME (Agendamentos) -->
+  <div class="header-logo" onclick="irParaHome()" style="cursor:pointer;">
     <div class="header-logo-icon">
       <i class="fas fa-plus"></i>
     </div>
@@ -777,11 +912,15 @@ function badge_class($st){
           $data   = fmt_data($ex['data'] ?? '');
           $hora   = isset($ex['horario']) ? substr($ex['horario'],0,5) : '';
           $st     = $ex['status'] ?? 'pendente';
+          $descSt = status_exame_descricao($st);
         ?>
           <div class="card-exame">
             <div class="icon"><i class="fas fa-vial"></i></div>
             <div class="info">
               <strong><?= safe($titulo) ?></strong>
+              <span class="sub">
+                <i class="fas fa-id-card"></i> Código do exame: #<?= (int)$ex['id'] ?>
+              </span>
               <span class="sub">
                 <?php if ($data): ?>
                   <i class="fas fa-calendar-day"></i> <?= safe($data) ?>
@@ -789,6 +928,9 @@ function badge_class($st){
                 <?php else: ?>
                   Sem data definida
                 <?php endif; ?>
+              </span>
+              <span class="sub">
+                <i class="fas fa-info-circle"></i> <?= safe($descSt) ?>
               </span>
             </div>
             <div>
@@ -809,11 +951,15 @@ function badge_class($st){
           $data   = fmt_data($ex['data'] ?? '');
           $hora   = isset($ex['horario']) ? substr($ex['horario'],0,5) : '';
           $st     = $ex['status'] ?? 'pendente';
+          $descSt = status_exame_descricao($st);
         ?>
           <div class="card-exame">
             <div class="icon" style="background:#fee2e2;color:#b91c1c;"><i class="fas fa-file-medical-alt"></i></div>
             <div class="info">
               <strong><?= safe($titulo) ?></strong>
+              <span class="sub">
+                <i class="fas fa-id-card"></i> Código do exame: #<?= (int)$ex['id'] ?>
+              </span>
               <span class="sub">
                 <?php if ($data): ?>
                   <i class="fas fa-calendar-day"></i> <?= safe($data) ?>
@@ -821,6 +967,9 @@ function badge_class($st){
                 <?php else: ?>
                   Sem data definida
                 <?php endif; ?>
+              </span>
+              <span class="sub">
+                <i class="fas fa-info-circle"></i> <?= safe($descSt) ?>
               </span>
             </div>
             <div>
@@ -884,8 +1033,70 @@ function badge_class($st){
 
 </main>
 
+<!-- ============ WIDGET DE CHAT / NOTIFICAÇÕES (CLIENTE) ============ -->
+<div id="ca-chat-fab">
+  💬
+</div>
+
+<div id="ca-chat-overlay" class="ca-hidden">
+  <div id="ca-chat-backdrop"></div>
+  <div id="ca-chat-card">
+    <div class="ca-chat-header">
+      <div class="ca-chat-tabs">
+        <button type="button" class="ca-tab ca-tab-active" data-tab="notificacoes">Notificações</button>
+        <button type="button" class="ca-tab" data-tab="chat">Chat</button>
+      </div>
+      <button type="button" id="ca-chat-close">×</button>
+    </div>
+
+    <div class="ca-chat-body">
+      <!-- ABA NOTIFICAÇÕES -->
+      <div id="ca-tab-notificacoes" class="ca-tab-pane ca-tab-pane-active">
+        <div id="ca-notif-list" class="ca-list">
+          <div class="ca-empty">Carregando notificações...</div>
+        </div>
+      </div>
+
+      <!-- ABA CHAT -->
+      <div id="ca-tab-chat" class="ca-tab-pane">
+        <div id="ca-chat-main">
+          <!-- LADO ESQUERDO – LISTA DE MÉDICOS -->
+          <div class="ca-chat-sidebar">
+            <div class="ca-chat-sidebar-header">Médicos</div>
+            <div id="ca-chat-contatos" class="ca-chat-contatos">
+              <div class="ca-empty">Carregando médicos...</div>
+            </div>
+          </div>
+
+          <!-- LADO DIREITO – CONVERSA -->
+          <div class="ca-chat-panel">
+            <div class="ca-chat-conversa-header">
+              <div id="ca-chat-avatar" class="ca-chat-avatar">?</div>
+              <div class="ca-chat-titles">
+                <div id="ca-chat-title">Selecione um médico</div>
+                <div id="ca-chat-sub">Nenhum chat ativo</div>
+              </div>
+            </div>
+
+            <div id="ca-chat-messages" class="ca-chat-messages">
+              <div class="ca-empty">Escolha um médico na lista ao lado para iniciar o chat.</div>
+            </div>
+
+            <div class="ca-chat-input">
+              <textarea id="ca-chat-text" rows="2" placeholder="Digite uma mensagem..." disabled></textarea>
+              <button type="button" id="ca-chat-send" disabled>Enviar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- FIM ABA CHAT -->
+    </div> <!-- .ca-chat-body -->
+  </div> <!-- #ca-chat-card -->
+</div> <!-- #ca-chat-overlay -->
+
+
 <script>
-/* ===== Navegação de seções (SPA simples) ===== */
+/* ================= NAVEGAÇÃO DAS SEÇÕES ================= */
 function mudarSecao(sec, li){
   document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
   const alvo = document.getElementById('sec-' + sec);
@@ -895,50 +1106,54 @@ function mudarSecao(sec, li){
   if (li) li.classList.add('active');
 }
 
-/* ===== Estado do agendamento ===== */
-let MEDICO_ATUAL = 0;
-let MEDICO_NOME  = '';
+/* Logo no cabeçalho -> volta para HOME (Agendamentos) */
+function irParaHome(){
+  const liHome = document.querySelector('.sidebar nav ul li:first-child');
+  mudarSecao('agendamentos', liHome);
+}
+
+/* ================= ESTADO AGENDAMENTO ================= */
+let MEDICO_ATUAL   = 0;
+let MEDICO_NOME    = '';
 let SLOT_ESCOLHIDO = null;
 
-let dataAtual = new Date(); // navegação do calendário
-let dataSelecionada = null; // Date do dia escolhido no calendário
+let dataAtual       = new Date(); // navegação do calendário
+let dataSelecionada = null;       // Date do dia escolhido no calendário
 
-/* ===== Util ===== */
 function pad2(n){ return String(n).padStart(2,'0'); }
 function dateToISO(d){ return d ? `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}` : ''; }
 function isoToDate(s){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
   const [y,m,d]=s.split('-').map(Number);
-  const dt = new Date(y, m-1, d); dt.setHours(0,0,0,0);
+  const dt = new Date(y, m-1, d);
+  dt.setHours(0,0,0,0);
   return dt;
 }
 
-/* ===== Selecionar médico a partir da tabela ===== */
+/* ========= Selecionar médico (tabela) ========= */
 function ativarMedico(id, nome, ev){
   MEDICO_ATUAL = id;
   MEDICO_NOME  = nome;
+
   document.getElementById('medico-head').textContent = `Médico: ${nome}`;
   document.getElementById('btn-confirmar').disabled = true;
   SLOT_ESCOLHIDO = null;
 
-  // marca botão da linha
-  document.querySelectorAll('.btn-ativar-cal').forEach(b=>b.classList.remove('sel'));
-  if (ev && ev.target) {
-    ev.target.classList.add('sel');
-  }
+  document.querySelectorAll('.btn-ativar-cal').forEach(b => b.classList.remove('sel'));
+  if (ev && ev.target) ev.target.classList.add('sel');
 
-  // rola até a grade de agendamento
   document.getElementById('agendar-section').scrollIntoView({behavior:'smooth', block:'center'});
 
-  // sugere a data de hoje
   const hojeISO = new Date().toISOString().slice(0,10);
-  document.getElementById('data-ag').value = hojeISO;
+  const campoData = document.getElementById('data-ag');
+  if (campoData) campoData.value = hojeISO;
+
   dataSelecionada = isoToDate(hojeISO);
   renderizarCalendario();
   carregarSlotsSelecionados();
 }
 
-/* ===== Calendário ===== */
+/* ================= CALENDÁRIO ================= */
 function mudarMes(delta){
   const dia = dataAtual.getDate();
   dataAtual.setDate(1);
@@ -949,8 +1164,10 @@ function mudarMes(delta){
 }
 
 function renderizarCalendario(){
-  const grid = document.getElementById('calendar-grid');
+  const grid   = document.getElementById('calendar-grid');
   const titulo = document.getElementById('mes-ano');
+  if (!grid || !titulo) return;
+
   grid.innerHTML = '';
 
   const ano = dataAtual.getFullYear();
@@ -962,14 +1179,16 @@ function renderizarCalendario(){
   const primeiroDia = new Date(ano, mes, 1).getDay();
   const diasNoMes   = new Date(ano, mes+1, 0).getDate();
 
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
 
   for (let i=0; i<primeiroDia; i++){
     grid.appendChild(document.createElement('div'));
   }
 
   for (let dia = 1; dia <= diasNoMes; dia++){
-    const d = new Date(ano, mes, dia); d.setHours(0,0,0,0);
+    const d = new Date(ano, mes, dia);
+    d.setHours(0,0,0,0);
     const div = document.createElement('div');
     div.textContent = dia;
 
@@ -991,7 +1210,8 @@ function renderizarCalendario(){
   }
 
   if (dataSelecionada){
-    document.getElementById('data-head').textContent = `Data: ${dataSelecionada.toLocaleDateString('pt-BR')}`;
+    document.getElementById('data-head').textContent =
+      `Data: ${dataSelecionada.toLocaleDateString('pt-BR')}`;
   } else {
     document.getElementById('data-head').textContent = '';
   }
@@ -1001,14 +1221,19 @@ function sincronizarCalendarioPorCampo(){
   const iso = document.getElementById('data-ag').value;
   dataSelecionada = isoToDate(iso);
   if (dataSelecionada){
-    dataAtual = new Date(dataSelecionada.getFullYear(), dataSelecionada.getMonth(), dataSelecionada.getDate());
+    dataAtual = new Date(
+      dataSelecionada.getFullYear(),
+      dataSelecionada.getMonth(),
+      dataSelecionada.getDate()
+    );
   }
   renderizarCalendario();
 }
 
-/* ===== Slots ===== */
+/* ================= SLOTS ================= */
 function carregarSlotsSelecionados(){
   const slotsBox = document.getElementById('slots');
+  if (!slotsBox) return;
   slotsBox.innerHTML = '';
 
   if (!MEDICO_ATUAL){
@@ -1028,9 +1253,12 @@ function carregarSlotsSelecionados(){
   slotsBox.innerHTML = '<span>Carregando...</span>';
 
   fetch(`Cliente.php?action=slots&medico_id=${MEDICO_ATUAL}&data=${encodeURIComponent(dataISO)}`)
-    .then(r=>r.json())
-    .then(j=>{
-      if(!j.ok){ slotsBox.innerHTML = `<em>${j.msg||'Erro'}</em>`; return; }
+    .then(r => r.json())
+    .then(j => {
+      if(!j.ok){
+        slotsBox.innerHTML = `<em>${j.msg||'Erro'}</em>`;
+        return;
+      }
       if(!j.slots || j.slots.length===0){
         slotsBox.innerHTML = '<em>Sem horários livres nesta data.</em>';
         return;
@@ -1039,12 +1267,12 @@ function carregarSlotsSelecionados(){
       SLOT_ESCOLHIDO = null;
       document.getElementById('btn-confirmar').disabled = true;
 
-      j.slots.forEach(h=>{
+      j.slots.forEach(h => {
         const b = document.createElement('button');
         b.className = 'slot-btn';
         b.textContent = h;
-        b.onclick = ()=>{
-          [...slotsBox.querySelectorAll('.slot-btn')].forEach(x=>x.classList.remove('sel'));
+        b.onclick = () => {
+          [...slotsBox.querySelectorAll('.slot-btn')].forEach(x => x.classList.remove('sel'));
           b.classList.add('sel');
           SLOT_ESCOLHIDO = h;
           document.getElementById('btn-confirmar').disabled = false;
@@ -1052,10 +1280,12 @@ function carregarSlotsSelecionados(){
         slotsBox.appendChild(b);
       });
     })
-    .catch(()=> { slotsBox.innerHTML = '<em>Falha ao carregar slots.</em>'; });
+    .catch(() => {
+      slotsBox.innerHTML = '<em>Falha ao carregar slots.</em>';
+    });
 }
 
-/* ===== Confirmar ===== */
+/* ================= CONFIRMAR AGENDAMENTO ================= */
 function confirmarAgendamento(){
   if (!MEDICO_ATUAL || !dataSelecionada || !SLOT_ESCOLHIDO){
     alert('Selecione médico, data e horário.');
@@ -1068,18 +1298,21 @@ function confirmarAgendamento(){
   fd.append('horario', SLOT_ESCOLHIDO);
 
   fetch('Cliente.php', { method:'POST', body: fd })
-    .then(r=>r.json())
-    .then(j=>{
-      if(!j.ok){ alert(j.msg || 'Erro'); return; }
+    .then(r => r.json())
+    .then(j => {
+      if(!j.ok){
+        alert(j.msg || 'Erro');
+        return;
+      }
       alert(j.msg);
       SLOT_ESCOLHIDO = null;
       document.getElementById('btn-confirmar').disabled = true;
       location.reload();
     })
-    .catch(()=> alert('Erro de rede.'));
+    .catch(() => alert('Erro de rede.'));
 }
 
-/* ===== Init ===== */
+/* ================= INIT AGENDAMENTO ================= */
 window.addEventListener('DOMContentLoaded', () => {
   const hojeISO = new Date().toISOString().slice(0,10);
   const campoData = document.getElementById('data-ag');
@@ -1087,6 +1320,362 @@ window.addEventListener('DOMContentLoaded', () => {
   dataSelecionada = isoToDate(hojeISO);
   renderizarCalendario();
 });
+
+/* =====================================================
+   WIDGET CHAT / NOTIFICAÇÕES (CLIENTE)
+===================================================== */
+
+const CA_API = 'chat_api_cliente.php';
+const CLIENTE_ID = <?= (int)$cliente['id']; ?>;
+
+let CA_CONVERSA_ID   = null;
+let CA_ULTIMO_MSG_ID = 0;
+let CA_POLL          = null;
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+/* ---- elementos principais ---- */
+const fab      = document.getElementById('ca-chat-fab');
+const overlay  = document.getElementById('ca-chat-overlay');
+const closeBtn = document.getElementById('ca-chat-close');
+
+fab.addEventListener('click', () => {
+  overlay.classList.remove('ca-hidden');
+  carregarNotificacoes();
+});
+
+closeBtn.addEventListener('click', () => {
+  overlay.classList.add('ca-hidden');
+  pararPolling();
+});
+
+/* ---- troca de abas ---- */
+document.querySelectorAll('.ca-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ca-tab').forEach(b => b.classList.remove('ca-tab-active'));
+    btn.classList.add('ca-tab-active');
+
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.ca-tab-pane').forEach(p => p.classList.remove('ca-tab-pane-active'));
+    document.getElementById('ca-tab-' + tab).classList.add('ca-tab-pane-active');
+
+    if (tab === 'notificacoes') {
+      carregarNotificacoes();
+      pararPolling();
+    } else if (tab === 'chat') {
+      carregarContatosChatCliente();
+    }
+  });
+});
+
+/* ============= NOTIFICAÇÕES ============= */
+function carregarNotificacoes(){
+  const list = document.getElementById('ca-notif-list');
+  list.innerHTML = '<div class="ca-empty">Carregando notificações...</div>';
+
+  fetch(CA_API + '?action=listar_notificacoes')
+    .then(r => r.json())
+    .then(j => {
+      if (!j.ok) {
+        list.innerHTML = '<div class="ca-empty">Erro ao carregar notificações.</div>';
+        return;
+      }
+      if (!j.items || !j.items.length) {
+        list.innerHTML = '<div class="ca-empty">Nenhuma notificação por enquanto.</div>';
+        return;
+      }
+      list.innerHTML = j.items.map(n => {
+        const data = (n.criado_em || '').replace('T',' ');
+        let tipoLegivel = (n.tipo || '').replace(/_/g, ' ');
+        if (tipoLegivel) {
+          tipoLegivel = tipoLegivel.charAt(0).toUpperCase() + tipoLegivel.slice(1);
+        }
+        return `
+          <div class="ca-notif-item ${n.lida == 1 ? 'lida' : ''}">
+            <div class="ca-notif-tipo">${tipoLegivel}</div>
+            <div class="ca-notif-msg">${escapeHtml(n.mensagem || '')}</div>
+            <div class="ca-notif-data">${data}</div>
+          </div>
+        `;
+      }).join('');
+    })
+    .catch(() => {
+      list.innerHTML = '<div class="ca-empty">Erro de rede.</div>';
+    });
+}
+
+/* ============= CHAT – LISTA DE MÉDICOS (CLIENTE) ============= */
+function carregarContatosChatCliente() {
+  const box = document.getElementById('ca-chat-contatos');
+  box.innerHTML = '<div class="ca-empty">Carregando médicos...</div>';
+
+  fetch(CA_API + '?action=listar_conversas')
+    .then(r => r.json())
+    .then(j => {
+      if (!j.ok) {
+        box.innerHTML = '<div class="ca-empty">Erro ao carregar médicos.</div>';
+        return;
+      }
+      const items = j.items || [];
+      if (!items.length) {
+        box.innerHTML = '<div class="ca-empty">Nenhum médico disponível para chat.</div>';
+        return;
+      }
+
+      box.innerHTML = items.map(c => contatoMedicoHTML(c)).join('');
+    })
+    .catch(() => {
+      box.innerHTML = '<div class="ca-empty">Erro de rede.</div>';
+    });
+}
+
+/* monta card do médico (blindado para variações de campos) */
+function contatoMedicoHTML(c) {
+  const medicoId = Number(
+    c.medico_id   !== undefined ? c.medico_id   :
+    c.id_medico   !== undefined ? c.id_medico   :
+    c.id          !== undefined ? c.id          : 0
+  );
+
+  const medicoNomeRaw = (
+    c.medico_nome !== undefined ? c.medico_nome :
+    c.nome_medico !== undefined ? c.nome_medico :
+    c.nome        !== undefined ? c.nome        : null
+  );
+
+  const especialidadeRaw = c.especialidade !== undefined ? c.especialidade : '';
+  const ultimaMsgRaw     = c.ultima_msg    !== undefined ? c.ultima_msg    : '';
+  const ultimaDataRaw    = c.ultima_data   !== undefined ? c.ultima_data   : '';
+  const fotoRaw          = (
+    c.foto_medico !== undefined ? c.foto_medico :
+    c.foto        !== undefined ? c.foto        : ''
+  );
+
+  const nome = escapeHtml(medicoNomeRaw || 'Médico');
+  const esp  = escapeHtml(especialidadeRaw || '');
+  const prev = escapeHtml(ultimaMsgRaw || '');
+  const hora = ultimaDataRaw ? ultimaDataRaw.slice(11, 16) : '';
+
+  const convId = c.conversa_id ? Number(c.conversa_id) : 0;
+
+  let avatarHTML;
+  if (fotoRaw) {
+    avatarHTML = `<img src="${escapeHtml(fotoRaw)}" alt="${nome}">`;
+  } else {
+    const base = medicoNomeRaw || 'M';
+    const iniciais = base
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(p => p[0])
+      .join('')
+      .slice(0,2)
+      .toUpperCase();
+    avatarHTML = `<span>${escapeHtml(iniciais)}</span>`;
+  }
+
+  const nomeAttr = escapeHtml(medicoNomeRaw || 'Médico');
+  const espAttr  = escapeHtml(especialidadeRaw || '');
+
+  return `
+    <div class="ca-chat-contact"
+         data-conversa="${convId}"
+         data-medico="${medicoId}"
+         data-nome="${nomeAttr}"
+         data-esp="${espAttr}"
+         onclick="caSelecionarContato(this)">
+      <div class="ca-chat-contact-avatar">
+        ${avatarHTML}
+      </div>
+      <div class="ca-chat-contact-main">
+        <div class="ca-chat-contact-top">
+          <span class="ca-chat-contact-name">${nome}</span>
+          <span class="ca-chat-contact-time">${hora}</span>
+        </div>
+        <div class="ca-chat-contact-last">
+          ${prev ? prev : '<em>Nenhuma mensagem ainda.</em>'}
+        </div>
+        ${esp ? `<div class="ca-chat-contact-esp">${esp}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/* quando clica num médico */
+function caSelecionarContato(el) {
+  document.querySelectorAll('.ca-chat-contact').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+
+  const medicoId = parseInt(el.dataset.medico || '0', 10);
+  const nome     = el.dataset.nome || ('Médico ' + medicoId);
+  const esp      = el.dataset.esp  || '';
+  let conversaId = parseInt(el.dataset.conversa || '0', 10);
+
+  const titleEl = document.getElementById('ca-chat-title');
+  const subEl   = document.getElementById('ca-chat-sub');
+  const avatar  = document.getElementById('ca-chat-avatar');
+
+  titleEl.textContent = nome;
+  subEl.textContent   = esp ? esp : 'Chat com o médico';
+
+  const iniciais = (nome || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(p => p[0])
+    .join('')
+    .slice(0,2)
+    .toUpperCase() || '?';
+  avatar.textContent = iniciais;
+
+  const msgBox = document.getElementById('ca-chat-messages');
+  msgBox.innerHTML = '<div class="ca-empty">Carregando mensagens...</div>';
+
+  const textArea = document.getElementById('ca-chat-text');
+  const btnSend  = document.getElementById('ca-chat-send');
+  textArea.disabled = false;
+  btnSend.disabled  = false;
+
+  pararPolling();
+
+  if (!conversaId) {
+    const fd = new URLSearchParams();
+    fd.append('action', 'obter_ou_criar_conversa');
+    fd.append('cliente_id', CLIENTE_ID);
+    fd.append('medico_id', medicoId);
+
+    fetch(CA_API, { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(j => {
+        if (!j.ok || !j.conversa_id) {
+          msgBox.innerHTML = '<div class="ca-empty">Não foi possível iniciar o chat.</div>';
+          return;
+        }
+        conversaId          = parseInt(j.conversa_id, 10);
+        el.dataset.conversa = conversaId;
+        CA_CONVERSA_ID      = conversaId;
+        CA_ULTIMO_MSG_ID    = 0;
+
+        msgBox.innerHTML = '';
+        carregarMensagensCliente(true);
+        CA_POLL = setInterval(() => carregarMensagensCliente(false), 4000);
+      })
+      .catch(() => {
+        msgBox.innerHTML = '<div class="ca-empty">Erro de rede ao criar conversa.</div>';
+      });
+  } else {
+    CA_CONVERSA_ID   = conversaId;
+    CA_ULTIMO_MSG_ID = 0;
+
+    msgBox.innerHTML = '';
+    carregarMensagensCliente(true);
+    CA_POLL = setInterval(() => carregarMensagensCliente(false), 4000);
+  }
+}
+
+/* carregar mensagens */
+function carregarMensagensCliente(primeiraVez = false) {
+  if (!CA_CONVERSA_ID) return;
+
+  const params = new URLSearchParams();
+  params.set('action', 'listar_mensagens');
+  params.set('conversa_id', CA_CONVERSA_ID);
+  if (!primeiraVez && CA_ULTIMO_MSG_ID > 0) {
+    params.set('ultimo_id', CA_ULTIMO_MSG_ID);
+  }
+
+  fetch(CA_API + '?' + params.toString())
+    .then(r => r.json())
+    .then(j => {
+      if (!j.ok) return;
+      const msgs = j.items || [];
+      if (!msgs.length) return;
+
+      const box = document.getElementById('ca-chat-messages');
+      if (primeiraVez) {
+        box.innerHTML = '';
+      }
+
+      msgs.forEach(m => {
+        const idMsg = parseInt(m.id, 10) || 0;
+        if (idMsg > CA_ULTIMO_MSG_ID) CA_ULTIMO_MSG_ID = idMsg;
+
+        // 🔹 Tenta pegar o ID do remetente nos campos mais comuns da API
+        const remetenteId = parseInt(
+          m.remetente_id !== undefined ? m.remetente_id :
+          m.id_remetente   !== undefined ? m.id_remetente :
+          m.cliente_id     !== undefined ? m.cliente_id :
+          0,
+          10
+        );
+
+        // CLIENTE_ID vem lá de cima: const CLIENTE_ID = <?= (int)$cliente['id']; ?>;
+        const isMe = (remetenteId === CLIENTE_ID);
+
+        const hora = (m.enviado_em || '').substring(11, 16);
+
+        const div = document.createElement('div');
+        div.className = 'ca-msg ' + (isMe ? 'me' : 'them');
+        div.innerHTML = `
+          <div>${escapeHtml(m.mensagem)}</div>
+          <div class="ca-msg-time">${hora}</div>
+        `;
+        box.appendChild(div);
+      });
+
+      box.scrollTop = box.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+
+function pararPolling() {
+  if (CA_POLL) {
+    clearInterval(CA_POLL);
+    CA_POLL = null;
+  }
+}
+
+/* enviar mensagem */
+document.getElementById('ca-chat-send').addEventListener('click', enviarMensagemCliente);
+document.getElementById('ca-chat-text').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && !ev.shiftKey) {
+    ev.preventDefault();
+    enviarMensagemCliente();
+  }
+});
+
+function enviarMensagemCliente() {
+  const txt = document.getElementById('ca-chat-text');
+  const msg = txt.value.trim();
+  if (!msg || !CA_CONVERSA_ID) return;
+
+  const fd = new FormData();
+  fd.append('action', 'enviar_mensagem');
+  fd.append('conversa_id', CA_CONVERSA_ID);
+  fd.append('mensagem', msg);
+
+  fetch(CA_API, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(j => {
+      if (!j.ok) {
+        alert(j.msg || 'Falha ao enviar mensagem.');
+        return;
+      }
+      txt.value = '';
+      carregarMensagensCliente(false);
+    })
+    .catch(() => {
+      alert('Erro de rede.');
+    });
+}
 </script>
 </body>
 </html>
